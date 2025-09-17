@@ -458,32 +458,32 @@ A CNN is typically divided into two stages. The first stage consists of the appl
 
 \section{Proposed approach}
 
-The entire project idea can be explained as follows:
+The overall idea of the project can be summarized as follows:
 
-\textit{Use AI to guide an FM synthesizer to simulate any instrument.}
+\textit{Use AI to guide an FM synthesizer in simulating any instrument.}
 
-Or, in a more complete explanation:
+Or, in a more detailed explanation:
 
-\textit{Use a Convolutional Neural Network (CNN) to analyze an instrument's sound sample and predict the correct parameters for an FM synthesizer to re-synthesize the ``same'' sound, allowing the synthesizer to simulate that instrument playing any song.}
+\textit{Use a Convolutional Neural Network (CNN) to analyze an instrument's sound sample and predict the correct parameters for an FM synthesizer to re-synthesize the ``same'' sound, enabling the synthesizer to simulate that instrument playing any song.}
 
-However, this idea is still very abstract, and to much comprehensive, then consider the following steps to achieve the project's goal:
+However, this idea is still quite abstract and broad. Therefore, consider the following steps to achieve the project's goal:
 
 \begin{enumerate}
-\item Implement a simple FM synthesizer, which could be later used both for generate the dataset, and to test the ability to generate the same sound.
-\item Generate an audio dataset with 20,000 random audio samples, each created by randomly selecting FM synthesizer parameters, essentially determining the synthesizer parameters and recording the tuples: (parameter values; audio sample).
+\item Implement a simple FM synthesizer, which can later be used both to generate the dataset and to test the ability to re-synthesize a sound.
+\item Generate an audio dataset with 5,000 random audio samples, each created by randomly selecting FM synthesizer parameters, essentially recording tuples of (parameter values; audio sample).
 \item Train a CNN to predict the correct parameters for the same FM synthesizer, given only an audio sample.
-\item Evaluate the model results using the NSynth dataset to test the model's generalization capabilities.
+\item Evaluate the model's results using the NSynth dataset to test its generalization capabilities.
 \end{enumerate}
 
 \subsection{Implementing the FM Synthesizer}
 
-There are several famous FM synthesizers on the market, but most are not open-source. Additionally, commercial synthesizers often have a vast number of parameters that can be used to control the audio production process. For example, Native Instruments' FM8 can use 1,000 (Claesson, 2019) parameters, and Teenage Engineering’s OP-1 synthesizer can be configured with up to $10^{76}$ parameters (Claesson, 2019).
+There are several well-known FM synthesizers on the market, but most are not open-source. Additionally, commercial synthesizers often have a vast number of parameters that can be used to control the audio production process. For example, Native Instruments' FM8 can use around 1,000 parameters (Claesson, 2019), and Teenage Engineering’s OP-1 synthesizer can be configured with up to $10^{76}$ parameters (Claesson, 2019).
 
-This incredibly large number of parameters is intended to give users fine-grained control over the generated audio, allowing for a wide variety of pitches (simulating a broad range of instruments and even non-instrument sounds, like bird songs or car horns, among others).
+This incredibly large number of parameters is intended to give users fine-grained control over the generated audio, allowing for a wide variety of pitches (simulating a broad range of instruments and even non-instrument sounds, such as bird songs or car horns, among others).
 
 However, since the scope of this project is not focused on a commercial solution but rather on research purposes, a simple FM synthesizer will suffice.
 
-Therefore, this work will implement a basic FM synthesizer with only 6 operators, inspired by the classic Yamaha DX7, which was one of the most disruptive milestones in the history of electronic music composition [TODO]. In fact, this simple setup is enough to cover all FM synthesis theories and achieve good performance during AI model evaluation.
+Therefore, this work will implement a basic FM synthesizer with only 6 operators, inspired by the classic Yamaha DX7, which was one of the most disruptive milestones in the history of electronic music composition~\cite{TODO}. In fact, this simple setup is enough to cover all FM synthesis theories and achieve good performance during AI model evaluation.
 
 In summary, the implemented synthesizer will consist of:
 
@@ -491,147 +491,72 @@ In summary, the implemented synthesizer will consist of:
 \item 5 modulator operators
 \item 1 carrier operator
 \item 1 ADSR envelope
-\item 1 high/low pass filter
-\item Only 1 synthesis algorithm
+\item 2 synthesis algorithms (one completely serial, and another with 3 serial operators followed by 2 parallel operators)
 \end{itemize}
+
+The synthesizer will be implemented in Python, using the NumPy library for numerical processing and the SciPy library for audio file generation (in addition to the python-soundfile library).
 
 \subsubsection{Generating the dataset}
 
-This project will use two datasets, each for a specific purpose, the first being the generated dataset, used for training, and the second being the NSynth dataset, used for evaluate the model's generalization capabilities.
+This project will use two datasets, each for a specific purpose: the first is the generated dataset, used for training, and the second is the NSynth dataset, used to evaluate the model's generalization capabilities.
 
-One of the most difficult steps in the KDD process is obtaining and processing data. However, for the purposes of this work, a good approach can be used. Similar to the Claesson approach (Claesson, 2019), since the goal is to achieve good control over the synthesizer parameters, it is sufficient to generate many samples of synthesizer parameters and their respective audio outputs.
+One of the most challenging steps in the KDD process is obtaining and processing data. However, for the purposes of this work, an effective approach can be used. Similar to Claesson's approach (Claesson, 2019), since the goal is to achieve good control over the synthesizer parameters, it is sufficient to generate many samples of synthesizer parameters and their respective audio outputs.
 
-Therefore, the main dataset will consist of 20,000 samples generated by the implemented FM synthesizer, with the following characteristics:
+Therefore, the main dataset will consist of 5,000 samples generated by the implemented FM synthesizer, with the following characteristics:
 
 \begin{itemize}
-\item 1 second in duration
+\item 5,000 samples
+\item 4 seconds in duration
 \item Monophonic samples (1-channel audio)
-\item 22 kHz audio sample rate
+\item 16 kHz audio sample rate (the synthesizer will generate samples at 48 kHz, but they will be downsampled to 16 kHz to be compatible with the NSynth dataset)
+\item Pitches varying between 20 Hz and 6,000 Hz
+\item Random ADSR envelopes
 \end{itemize}
 
-No specific control will be imposed on pitch or sound envelope formats, as the goal is for the model to learn as much control as possible.
-
-The expectation is to achieve a learning level where the model can accurately predict the parameters for any sound that can be generated by the implemented FM synthesizer.
+The expectation is to achieve a level of learning where the model can accurately predict the parameters for a wide range of sounds that can be generated by the implemented FM synthesizer.
 
 \subsubsection{External dataset}
 
-In addition to the generated dataset, an external dataset named NSynth, from Google's Magenta project, will be used.
+In addition to the generated dataset, an external dataset called NSynth, from Google's Magenta project, will be used.
 
-This dataset configuration is similar to the previous one, and the main purpose of using it is to achieve good generalization capabilities with the model. This is because the dataset contains a lot of real instrument samples.
+This dataset has a similar configuration to the generated one, and its main purpose is to evaluate the generalization capabilities of the model. This is because it contains many real instrument samples, including both acoustic and electronic instruments (as well as some synthetic sounds generated by professional synthesizers), which the model has never seen before.
 
-Below are the dataset characteristics:
+Only the test set of the NSynth dataset will be used, with the following characteristics:
 
 \begin{itemize}
+\item 4,096 samples
 \item 4 seconds in duration
 \item Monophonic samples (1-channel audio)
 \item 16 kHz audio sample rate
-\item 1,006 instruments
-\item Pitches varying between 27.5 Hz and 4,186.01 Hz
-\item The envelope includes a sustain for up to 3 seconds and a decay for 1 second
-\item 108,978 acoustic samples; 110,224 electronic samples; 86,777 synthetic samples; totaling 305,979 samples
+\item 11 instrument families
+\item Pitches ranging from 27.5 Hz to 4,186.01 Hz
+\item The envelope includes a sustain of up to 3 seconds and a decay of 1 second
 \end{itemize}
 
 \section{Training the CNN}
 
-There are many experiments to conduct during the model training, but at a high level, there are two main approaches that will be explored:
+The training process uses only the generated random dataset. The main advantage is that, in this dataset, we already have the correct parameters for generating each sample sound. Therefore, the training process is straightforward and should yield good performance.
 
-\begin{enumerate}
-    \item Training based on the generated random dataset.
-    \item Training based on the NSynth dataset.
-\end{enumerate}
+Figure~\ref{fig:cnn_simple_training} presents the overall scheme for this training process.
 
-The major difference between these two approaches is that, in the first, the FM synthesizer parameters are known before training, whereas in the second, the parameters are unknown, and the implemented synthesizer must be used during the training process.
-
-Both approaches will be detailed below, but it is important to highlight that the chosen neural network architecture is the Convolutional Neural Network (CNN).
-
-The CNN architecture has shown good results when dealing with data domains where there are direct correlations between different portions of the same data sample [TODO]. It has demonstrated particularly strong performance in image and sound processing [TODO], and in the music field, various problems (such as genre or pitch prediction, for example) have benefited from this architecture [TODO].
-
-Therefore, this architecture was chosen for this project mainly because of the central idea that the direct use of sound information in the time domain rather than in the frequency domain (as in Claesson’s work [TODO]) can achieve better results. CNNs have been performing very well when applied to audio in the time domain [TODO]. Thus, this hypothesis will be effectively tested in this work.
-
-\subsection{Training based on the generated random dataset}
-
-\basg{analisar as diferentes propostas
-
-}
-
-In this approach, the training process uses only the generated random dataset. The main advantage is that, in this dataset, we already have the correct parameters to generate each sample sound. Therefore, the training process is straightforward and should yield good performance. Figure~\ref{fig:cnn_simple_training} presents the macro schema for this training process.
-
-\begin{figure}[htb]
- \caption{Training process, based on the generated random dataset}
- \label{fig:cnn_simple_training}
+\begin{figure}[h]
  \centering
- \includegraphics[scale=0.5]{images/cnn_simple_training.jpg}
- \fdireta{usp:logo}
+ \includegraphics[width=\linewidth]{figs/cnn_simple_training.jpg}
+ \caption{The CNN training scheme.}
+ \Description{The CNN training scheme.}
 \end{figure}
 
-\subsection{Training based on the NSynth dataset}
-
-\basg{o problema é que não temos o gabarito. O dataset tem amostras de instrumentos e jsons falando sobre o instrumento. 
-}
-
-In this approach, the training does not use the generated random dataset but instead utilizes the NSynth dataset.
-
-The main idea is to learn directly from real instrument samples, which may achieve better generalization capabilities.
-
-Below is the macro schema for this training process:
-
-\begin{figure}[htb]
- \caption{Training process, based on the NSynth dataset}
- \label{fig:cnn_training}
- \centering
- \includegraphics[scale=0.5]{images/cnn_training.jpg}
- \fdireta{usp:logo}
-\end{figure}
-
-However, as shown in the schema, there are two challenges in this approach:
-
-\begin{itemize}
-    \item The implemented FM synthesizer must participate in the training process, which may penalize the training performance.
-    \item The loss function should consider sound similarity measures, as the parameters cannot be evaluated directly, and the synthesized sound needs to be assessed.
-    \begin{itemize}
-        \item The similarity measures will be presented in the next section.
-    \end{itemize}
-\end{itemize}
-
-\newpage
-
-\subsection{Mixed Training Approach}
-
-In addition to the previously presented approaches, another experiment can combine both.
-
-In summary, the third idea is to use the generated dataset for training, similar to the first approach. Then, the ``transfer learning principle'' will be applied by freezing the neural network weights, adding more layers, and training again, but this time using the NSynth dataset, following the same idea as the second approach.
-
-The primary intention is to achieve better performance, as only a few layers will be trained in the most complex way.
-
-\section{Evaluating results}
+\section{Evaluating Results}
 
 As introduced in the ``Theoretical Background'' section, the following audio similarity measures will be used in this work:
 
 \begin{itemize}
-\item FFT-distance: Used to compare the frequency components present in an audio signal.
-\item STFT-distance: Used to compare the variation of frequency components over time.
-\item Log-mel-spectrogram-distance: Used for a similar purpose as FFT-distance, but typically models human cognitive pitch perception more accurately.
-\item Envelope-distance: Used to compare the envelope characteristics of two audio signals.
+\item FFT distance: Used to compare the frequency components present in an audio signal.
+\item STFT distance: Used to compare the variation of frequency components over time.
+\item Log-mel-spectrogram distance: Used for a similar purpose as FFT distance, but typically models human cognitive pitch perception more accurately.
 \end{itemize}
 
-These metrics can be applied in various ways during the research, especially when training based on the NSynth dataset. However, the primary goal of these metrics is to perform a final test on the model's generalization capability. That is, after the model training, the NSynth dataset (or a part of it) will be used to determine if the model is able to re-synthesize real instruments.
-
-\section{Applying to a Brazilian Instrument}
-
-Since the perception of audio similarity is primarily a cognitive process, it is inherently subjective. Therefore, this step is a natural extension of the proposed initiative, as the model will be applied to a real-world challenge.
-
-Furthermore, the techniques will be applied to a Brazilian instrument called the \textit{Rabeca}, and some final musical pieces will be produced, further situating this project within its national context.
-
-To achieve this purpose, the following steps will be applied:
-
-\begin{enumerate}
-    \item Select an audio sample played with the \textit{Rabeca}.
-    \item Use the model to predict the FM Synthesizer parameters.
-    \item Implement a simple code to synthesize internationally famous songs (such as Bach or Vivaldi), but played with a typical Brazilian instrument.
-    \item Publish the songs (for future research purposes).
-\end{enumerate}
-
-The final goal of this step is to make the results available for future work, potentially guiding an opinion poll with real people, providing a cognitive dimension to the evaluation process.
+These metrics will be applied to perform a final test of the model's generalization capability. That is, after model training, the NSynth test dataset will be used to determine whether the model is able to re-synthesize real instruments.
 
 
 \section{Experiments}
