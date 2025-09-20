@@ -470,12 +470,79 @@ However, this idea is still quite abstract and broad. Therefore, consider the fo
 
 \begin{enumerate}
 \item Implement a simple FM synthesizer, which can later be used both to generate the dataset and to test the ability to re-synthesize a sound.
-\item Generate an audio dataset with 5,000 random audio samples, each created by randomly selecting FM synthesizer parameters, essentially recording tuples of (parameter values; audio sample).
+\item Generate an audio dataset with random audio samples, each created by randomly selecting FM synthesizer parameters, essentially recording tuples of (parameter values; audio sample).
 \item Train a CNN to predict the correct parameters for the same FM synthesizer, given only an audio sample.
 \item Evaluate the model's results using the NSynth dataset to test its generalization capabilities.
 \end{enumerate}
 
-\subsection{Implementing the FM Synthesizer}
+Frequency Modulation Synthesis was chosen because it is one of the most common and effective methods for generating audio samples, owing to its simplicity and low computational cost.
+
+This technique became extremely popular in the 1980s, when Yamaha released the Yamaha DX7 synthesizer, and in the 1990s it became a standard for many commercial synthesizers, and it is still used today in the production of electronic music (Claesson, 2019).
+
+However, the effective use of this technique depends on advanced knowledge to select the right parameters for generating good results, which can involve thousands of parameters.
+
+Therefore, the ability to simplify parameter selection constitutes a strong justification for this study, and AI models appear as an affordable way to learn the right patterns for controlling an FM synthesizer.
+
+The basic idea is that a model can be produced to guide an FM synthesizer in mimicking any sound, thereby optimizing the effort to compose electronic music.
+
+Furthermore, in terms of computational cost, using an AI model to predict parameters and guiding an FM synthesizer is much more effective than applying a Generative Neural Network to generate the audio. Additionally, a synthesizer can be best applied in real-time composition and electronic musician performance.
+
+\subsection{Training the CNN}
+
+As described in the ``Theoretical Background`` section, the main characteristic of the sound that should be reproduced to achieve the main work goal is the ``timbre``, which is defined as the combination of frequencies present in the sound.
+
+It is clear that techniques such as filtering, Fourier Transform, and etc, could be used to extract the timbre components from an audio signal, but it is not enough to control an FM Synthesizer. In fact, the FM Synthesis controlling is, normally, an experimental process involving trial and error.
+
+Additionally, as described before, each FM Synthesis operator produces additional frequency components in the signal, and there is no practical method to predict the correct parameter settings, but, as a mathematical function, it is easy to see that this synthesis pattern can be easily approximated using AI models.
+
+Thus, the current work aims to use a CNN model, since it is a very effective method for learning patterns, respecting the internal data structure, and without requiring a lot of preprocessing work.
+In other words, a CNN can simultaneously learn the time-dependent aspects of an audio signal and can act as a pattern extractor, by applying a sequence of filtering operations, allowing the use of the raw audio format as input.
+
+And so, to train the CNN model, a generated random dataset will be used, which main advantage is that it contains both the audio signal and the expected parameters for generating each sample sound. Therefore, the training process is straightforward and should yield good performance.
+
+The figure below presents the overall scheme for this training process.
+
+\begin{figure}[h]
+ \centering
+ \includegraphics[width=\linewidth]{figs/cnn_simple_training.jpg}
+ \caption{The CNN training scheme.}
+ \Description{The CNN training scheme.}
+\end{figure}
+
+\subsubsection{Evaluating Results}
+
+As introduced in the ``Theoretical Background'' section, the following audio similarity metrics will be used in this work:
+
+\begin{itemize}
+\item FFT distance: Used to compare the frequency components present in an audio signal.
+\item STFT distance: Used to compare the variation of frequency components over time.
+\item Log-mel-spectrogram distance: Used for a similar purpose as FFT distance, but typically models human cognitive pitch perception more accurately.
+\end{itemize}
+
+These metrics will be applied to perform a final test of the model's generalization capability.
+
+The proposed approach is, after the model training, to use another external dataset, the Google NSynth dataset, which is better described below, and will be used in order to determine whether the model is able to re-synthesize real instruments, following the steps outlined below:
+
+\begin{enumerate}
+\item Train the model with the random generated dataset
+\item Test the model with the NSynth dataset
+\item Re-synthesize the NSynth dataset using the predicted parameters
+\item Calculate the audio similarity metrics
+\item Evaluate the results
+\end{enumerate}
+
+
+
+
+
+
+
+
+\section{Experiments}
+
+\subsection{Setup}
+
+\subsubsection{Implemented FM Synthesizer}
 
 There are several well-known FM synthesizers on the market, but most are not open-source. Additionally, commercial synthesizers often have a vast number of parameters that can be used to control the audio production process. For example, Native Instruments' FM8 can use around 1,000 parameters (Claesson, 2019), and Teenage Engineering’s OP-1 synthesizer can be configured with up to $10^{76}$ parameters (Claesson, 2019).
 
@@ -483,7 +550,7 @@ This incredibly large number of parameters is intended to give users fine-graine
 
 However, since the scope of this project is not focused on a commercial solution but rather on research purposes, a simple FM synthesizer will suffice.
 
-Therefore, this work will implement a basic FM synthesizer with only 6 operators, inspired by the classic Yamaha DX7, which was one of the most disruptive milestones in the history of electronic music composition~\cite{TODO}. In fact, this simple setup is enough to cover all FM synthesis theories and achieve good performance during AI model evaluation.
+Therefore, this work will implement a basic FM synthesizer with only 6 operators, inspired by the classic Yamaha DX7, which was one of the most disruptive milestones in the history of electronic music composition. In fact, this simple setup is enough to cover all FM synthesis theories and achieve good performance during AI model evaluation.
 
 In summary, the implemented synthesizer will consist of:
 
@@ -495,6 +562,21 @@ In summary, the implemented synthesizer will consist of:
 \end{itemize}
 
 The synthesizer will be implemented in Python, using the NumPy library for numerical processing and the SciPy library for audio file generation (in addition to the python-soundfile library).
+
+The figure below presents the FM Synthesizer algorithms:
+
+TODO
+
+To summarize, the implemented synthesizer renders the audio signal according to the following steps:
+
+\begin{enumerate}
+\item Generate each operator signal, applying it to vary the phase of the next operator in the sequence (a completely FM synthesis also varies the frequency, but, as the Yamaha DX7, it only varies the phase, for simplicity, and to avoid complex noise treatment). All signals are rendered using a 48 kHz sample rate.
+\item Combine the output of each operator according to the synthesis algorithm (when there are parallel operators, they are summed).
+\item Apply the ADSR envelope to the signal.
+\item Downsample the signal to 16 kHz (applying a low-pass filter to avoid aliasing).
+\end{enumerate}
+
+And it is important to highlight that the high sample rate of 48 kHz was chosen to allow the FM synthesis to work well enough, since at high frequencies there is a risk of obtaining aliasing and noise (due to the extremely high frequency components generated by the normal spacing of the FM operators). Furthermore, the low-pass filtering, used to downsample, is also useful to prevent the aliasing problem.
 
 \subsubsection{Generating the dataset}
 
@@ -533,33 +615,10 @@ Only the test set of the NSynth dataset will be used, with the following charact
 \item The envelope includes a sustain of up to 3 seconds and a decay of 1 second
 \end{itemize}
 
-\section{Training the CNN}
-
-The training process uses only the generated random dataset. The main advantage is that, in this dataset, we already have the correct parameters for generating each sample sound. Therefore, the training process is straightforward and should yield good performance.
-
-Figure~\ref{fig:cnn_simple_training} presents the overall scheme for this training process.
-
-\begin{figure}[h]
- \centering
- \includegraphics[width=\linewidth]{figs/cnn_simple_training.jpg}
- \caption{The CNN training scheme.}
- \Description{The CNN training scheme.}
-\end{figure}
-
-\section{Evaluating Results}
-
-As introduced in the ``Theoretical Background'' section, the following audio similarity measures will be used in this work:
-
-\begin{itemize}
-\item FFT distance: Used to compare the frequency components present in an audio signal.
-\item STFT distance: Used to compare the variation of frequency components over time.
-\item Log-mel-spectrogram distance: Used for a similar purpose as FFT distance, but typically models human cognitive pitch perception more accurately.
-\end{itemize}
-
-These metrics will be applied to perform a final test of the model's generalization capability. That is, after model training, the NSynth test dataset will be used to determine whether the model is able to re-synthesize real instruments.
+\subsubsection{CNN Architecture}
 
 
-\section{Experiments}
+
 \subsection{Plan}
 -dataset
 -protococlos de avaliação
