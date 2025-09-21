@@ -601,8 +601,8 @@ However, as the main purpose is to re-synthesize real instruments, the randomnes
 
 \begin{itemize}
 \item The minimum frequency for the carrier is 20 Hz, and the maximum is 6 kHz (for example, the maximum frequency for a violin is approximately 3 kHz; another important aspect for this maximum choice is that we need to stay under 8 kHz due to the output sample rate, because of the Nyquist frequency). The frequency is chosen by a uniform random distribution.
-\item The minimum ratio for each modulator is 1/8, and the maximum is 8 (to avoid aliasing in the final signal). Two methods are used to select the ratio: a) with 90% probability, the ratio will be a random uniform choice between discretized values (for example: 1/8, 1/6, ..., 2, 3, 54, ..., 8; the idea is to simulate a real instrument); and b) with 10% probability, the ratio will be a uniform log distribution between 1/8 and 8 (allowing random metallic sounds, like bells, but respecting human auditory perception, where the difference between low frequencies is more perceived than between high frequencies).
-\item The minimum beta is 0, and the maximum is 8 (also to avoid aliasing in the final signal). The beta is chosen by a uniform random distribution, controlled such that 20% of the values are between 0 and 0.5, 60% are between 0.5 and 3, and 20% are between 3 and 8 (prioritizing rich timbres and avoiding pure sinusoidal sounds, as well as excessive metallic sounds).
+\item The minimum ratio for each modulator is 1/8, and the maximum is 8 (to avoid aliasing in the final signal). Two methods are used to select the ratio: a) with 90\% probability, the ratio will be a random uniform choice between discretized values (for example: 1/8, 1/6, ..., 2, 3, 54, ..., 8; the idea is to simulate a real instrument); and b) with 10\% probability, the ratio will be a uniform log distribution between 1/8 and 8 (allowing random metallic sounds, like bells, but respecting human auditory perception, where the difference between low frequencies is more perceived than between high frequencies).
+\item The minimum beta is 0, and the maximum is 8 (also to avoid aliasing in the final signal). The beta is chosen by a uniform random distribution, controlled such that 20\% of the values are between 0 and 0.5, 60\% are between 0.5 and 3, and 20\% are between 3 and 8 (prioritizing rich timbres and avoiding pure sinusoidal sounds, as well as excessive metallic sounds).
 \item The amplitude is fixed at 1.0, to avoid that different combinations of beta and amplitude generate the same frequency spectrum and the same timbre (prioritizing the CNN learning).
 \end{itemize}
 
@@ -645,17 +645,156 @@ Only the test set of the NSynth dataset will be used, with the following charact
 
 \subsection{Training Protocol}
 
-\subsubsection{Train/Test Split}
-
 \subsubsection{Environment Settings}
 
+To train the model, the following environment settings were used:
+
+\begin{itemize}
+\item Python Version: 3.11.2
+\item Tensorflow Version: 2.19.0
+\item Keras Version: 3.11.1
+\item Nvidia-cuda Version: 12.5.82
+\item Nvidia-cudnn Version: 3.0.75
+\item Nvidia Driver Version: 535.247.01
+\item CUDA Version: 12.2
+\item GPU: NVIDIA GeForce GTX 1650 (4GB memory)
+\end{itemize}
+
+\subsubsection{Train/Test Split}
+
+As each sample in the generate dataset is a complete sound of 4 secound long (and 64,000 audio samples, wich is 16 kHz multiplied by 4 seconds), a simple train/test split of 75/25 was used, resulting in 3,750 samples for training and 1,250 samples for testing.
+
+But, from these 3,750 samples, 20\% of them will be used for validation, resulting in a total of 3,000 samples for training and 750 samples for testing.
+
 \subsubsection{CNN Architecture and Hiperparameters}
+
+The model architecture used is as following images, where the first cover the features extraction, and the second cover the regression (a common MLP):
+
+\begin{figure}[h]
+ \centering
+ \includegraphics[width=0.8\linewidth]{figs/projecao.png}
+ \caption{The features extraction part (CNN).}
+ \Description{The features extraction part (CNN).}
+\end{figure}
+
+\begin{figure}[h]
+ \centering
+ \includegraphics[width=0.8\linewidth]{figs/regressao.png}
+ \caption{The regressor part (common MLP).}
+ \Description{The regressor part (common MLP).}
+\end{figure}
+
+The complete model is simple the sum of the two parts. But is important highlight the hyperparameters of each part:
+
+\begin{table}
+  \caption{Hyperparameters of Features Extraction (CNN part)}
+  \label{tab:hyperparams_conv}
+  \begin{tabular}{cll}
+    \toprule
+    Component & Hyperparameter & Value \\
+    \midrule
+    Input Layer & Input shape & $(input\_len, input\_dims)$ \\
+    BatchNormalization & -- & Applied to input layer \\
+    Conv1D (extrator1) & Filters & 16 \\
+                       & Kernel size & 5 \\
+                       & Strides & 2 \\
+                       & Activation & relu \\
+                       & Regularization & l2 \\
+                       & Use bias & True \\
+    Conv1D (extrator1\_2) & Filters & 32 \\
+                          & Kernel size & 128 \\
+                          & Strides & 16 \\
+                          & Activation & relu \\
+                          & Regularization & l2 \\
+                          & Use bias & True \\
+    Conv1D (extrator1\_3) & Filters & 64 \\
+                          & Kernel size & 512 \\
+                          & Strides & 32 \\
+                          & Activation & relu \\
+                          & Regularization & l2 \\
+                          & Use bias & True \\
+    Flatten & -- & Applied after Conv1D layers \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}
+  \caption{Hyperparameters of the Regressor (MLP part)}
+  \label{tab:hyperparams_regressor}
+  \begin{tabular}{cll}
+    \toprule
+    Component & Hyperparameter & Value \\
+    \midrule
+    Dense (regressor, layer 1) & Units & $input\_dims/2$ \\
+                               & Activation & variable \\
+                               & Regularization & l2 \\
+                               & Use bias & variable \\
+    Dropout & Rate & 0.2 \\
+    Dense (regressor, layer 2) & Units & $input\_dims/4$ \\
+                               & Activation & variable \\
+                               & Use bias & variable \\
+    Dense (regressor output) & Units & $output\_dims$ \\
+                             & Activation & None \\
+                             & Use bias & variable \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Other important highlights:
+
+\begin{itemize}
+\item The target variable is normalized to have a mean of 0 and a standard deviation of 1, prior to training.
+\item The Adamax optimizer was used.
+\item The Mean Squared Error (MSE) was used as the loss function.
+\item The recorded metrics were the Mean Absolute Error (MAE), and the Mean Squared Error (MSE).
+\item The model was trained for 200 epochs, with early stopping enabled using 10 epochs of patience and best weights restoring.
+\item The model was trained with a batch size of 32.
+\end{itemize}
 
 \subsection{Results}
 
 \subsubsection{Training/Validation Results}
 
+The training and validation results can be viewed in the following:
+
+\begin{figure}[h]
+ \centering
+ \includegraphics[width=\linewidth]{figs/training_validation_table_results.png}
+ \caption{Evolution of loss functions over the last five epochs.}
+ \Description{Evolution of loss functions over the last five epochs.}
+\end{figure}
+
+\begin{figure}[h]
+ \centering
+ \includegraphics[width=\linewidth]{figs/mse_evolution.png}
+ \caption{Evolution of MSE during training.}
+ \Description{Evolution of MSE during training.}
+\end{figure}
+
+\begin{figure}[h]
+ \centering
+ \includegraphics[width=\linewidth]{figs/mae_evolution.png}
+ \caption{Evolution of MAE during training.}
+ \Description{Evolution of MAE during training.}
+\end{figure}
+
 \subsubsection{Test Results}
+
+To compute the test results, the predicted values, from the spplited test portions, was transformed back to the original space, and the following metrics were calculated:
+
+\begin{table}
+  \caption{Evaluation Metrics on Test Set}
+  \label{tab:test_metrics}
+  \begin{tabular}{cl}
+    \toprule
+    Metric & Value \\
+    \midrule
+    RMSE & 38.5391 \\
+    MSE  & 1485.2655 \\
+    MAE  & 7.6973 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 \subsubsection{Evaluation Results}
 
