@@ -798,6 +798,100 @@ To compute the test results, the predicted values, from the spplited test portio
 
 \subsubsection{Evaluation Results}
 
+As explained in the section about the proposed approach, after the CNN training, to evaluate the model's ability to re-synthesize real instruments, the NSynth dataset was used, in order to calculate specific metrics focused on the capacity of the FM synthesizer to recreate the same timbres.
+
+To achieve this, the model was applied to the NSynth test dataset, and the predicted parameters were used with the implemented FM synthesizer. Then, each signal output was compared with the respective original signal, calculating the proposed metrics:
+
+\begin{itemize}
+  \item FFT distance
+  \item STFT distance
+  \item Log-mel-spectrogram distance
+\end{itemize}
+
+However, to achieve a good evaluation, the proposed metrics were also used to compare each NSynth audio with a baseline, which consists of a pure sinusoidal signal, with a frequency of 440 Hz (i.e., the A4 note, which is used as a reference to tune the majority of instruments).
+
+Then, the results can be seen in the following:
+
+\begin{table}
+  \caption{Comparison of Means (Resynthesis vs Baseline, with Improvement \%)}
+  \label{tab:metrics_means}
+  \begin{tabular}{lccc}
+    \toprule
+    Metric & Resynthesis & Baseline & Improvement (\%) \\
+    \midrule
+    FFT   & 15640.799 & 33508.780 & 53.34 \\
+    STFT  & 2772.460  & 7290.362  & 61.95 \\
+    Log Mel (raw) & 144.194 & 184.872 & 22.00 \\
+    Log Mel (normalized) & 0.00894 & 0.01146 & 21.99 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}
+  \caption{Comparison of Standard Deviations (Resynthesis vs Baseline)}
+  \label{tab:metrics_std}
+  \begin{tabular}{lcc}
+    \toprule
+    Metric & Resynthesis & Baseline \\
+    \midrule
+    FFT   & 6824.366 & 1887.364 \\
+    STFT  & 1080.760 & 434.867  \\
+    Log Mel (raw) & 47.726 & 30.136 \\
+    Log Mel (normalized) & 0.00296 & 0.00187 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Note that the Log Mel metric was compared, including a normalized version, which is obtained by dividing the raw Log Mel value by the product of the number of Mel bands and the time window quantity.
+
+The normalized Log Mel is proposed because it is better suited for comparing results with other works. For example, authors such as [TODO] achieved good results with values between 0.005 and 0.02, which indicates that the current work result is within a satisfactory range.
+
+Furthermore, to facilitate a better understanding, the metrics were also compared by grouping the dataset by instrument family. This allows for the evaluation of the model's performance on different classes of sounds:
+
+\begin{table}
+  \caption{Comparison of Means by Instrument Group}
+  \label{tab:means_by_group}
+  \begin{tabular}{lcccc}
+    \toprule
+    Group & FFT & STFT & Log Mel (raw) & Log Mel (norm) \\
+    \midrule
+    bass     & 13781.79 & 2513.21 & 142.53 & 0.00884 \\
+    brass    & 17602.07 & 3057.35 & 158.85 & 0.00985 \\
+    flute    & 18812.31 & 3473.10 & 166.27 & 0.01031 \\
+    guitar   & 13431.71 & 2502.01 & 131.60 & 0.00816 \\
+    keyboard & 12192.70 & 2190.55 & 123.30 & 0.00765 \\
+    mallet   & 9906.05  & 1969.04 & 110.33 & 0.00684 \\
+    organ    & 22169.99 & 3789.86 & 178.80 & 0.01109 \\
+    reed     & 16668.45 & 2716.18 & 135.03 & 0.00837 \\
+    string   & 16223.92 & 2769.57 & 155.10 & 0.00962 \\
+    vocal    & 29903.85 & 4925.21 & 186.67 & 0.01157 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\begin{table}
+  \caption{Comparison of Standard Deviations by Instrument Group}
+  \label{tab:std_by_group}
+  \begin{tabular}{lcccc}
+    \toprule
+    Group & FFT & STFT & Log Mel (raw) & Log Mel (norm) \\
+    \midrule
+    bass     & 6414.21 & 846.99  & 45.92 & 0.00285 \\
+    brass    & 3850.62 & 726.66  & 37.93 & 0.00235 \\
+    flute    & 4602.86 & 965.61  & 36.67 & 0.00227 \\
+    guitar   & 4892.00 & 774.12  & 40.54 & 0.00251 \\
+    keyboard & 4559.03 & 643.60  & 43.21 & 0.00268 \\
+    mallet   & 2914.28 & 455.63  & 41.31 & 0.00256 \\
+    organ    & 4588.24 & 946.80  & 42.91 & 0.00266 \\
+    reed     & 6217.81 & 954.98  & 28.91 & 0.00179 \\
+    string   & 6973.87 & 1153.48 & 56.12 & 0.00348 \\
+    vocal    & 6303.27 & 1402.80 & 44.51 & 0.00276 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+And as can be seen, on average, the top three models performed best for the mallet, keyboard, and guitar families.
+
 \section{Conclusion}
 
 \section{Future Work}
