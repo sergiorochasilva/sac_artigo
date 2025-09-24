@@ -147,12 +147,7 @@
 %% The abstract is a short summary of the work to be presented in the
 %% article.
 \begin{abstract}
-  A clear and well-documented \LaTeX\ document is presented as an
-  article formatted for publication by ACM in a conference proceedings
-  or journal publication. Based on the ``acmart'' document class, this
-  article presents and explains many of the common variations, as well
-  as many of the formatting elements an author may use in the
-  preparation of the documentation of their work.
+  FM synthesis is one of the most famous techniques for sound synthesis and, although it is an old method, it is still widely used nowadays. It is simple, computationally inexpensive, and capable of producing good results. However, successful use of this type of audio synthesis presents a major challenge: the correct choice of parameters for the synthesizer. This process is not precise, and there is no fully deterministic way to follow. Musicians are usually guided by their intuition and an empirical trial-and-error process. To revive this technique and take advantage of its benefits, the use of CNN models appears as a very promising option, since they can help musicians achieve convincing results, imitating real instruments in a short time and at low cost. Therefore, this work explores this approach by training a CNN model to predict the appropriate parameters that enable an FM synthesizer to resynthesize original audio samples (such as acoustic instruments).
 \end{abstract}
 
 %%
@@ -192,8 +187,7 @@
 %%
 %% Keywords. The author(s) should pick words that accurately describe
 %% the work being presented. Separate the keywords with commas.
-\keywords{Do, Not, Us, This, Code, Put, the, Correct, Terms, for,
-  Your, Paper}
+\keywords{freuqnecy modulation, FM Synthesis, CNN, re-synthesis, musical computation, sound, nsynth, convolutional neural network, NSynth}
 
 
 %%
@@ -202,6 +196,12 @@
 \maketitle
 
 \section{Introduction}
+
+The main goal of this work is to guide a synthesizer based on frequency modulation (FM) to reproduce arbitrary sounds. A secondary goal is to achieve a process that fully explores the capabilities of the FM synthesizer itself.
+
+In other words, simulating the input sound is very important, but the resulting model should also be able to predict parameters for any sound that can be generated with the available resources of the synthesizer. This aligns with one of the main historical advantages of synthesizers: the ability to create sounds that cannot be reproduced by acoustic instruments.
+
+Therefore, in addition to recreating acoustic instrument sounds, the model should be able to approximate any sound sample, assisting future users in adapting the synthesizer to reproduce imaginative timbres with fewer manual parameter adjustments. This perspective also guides the choice of the training dataset, as discussed in the Proposed Approach section.
 
 \section{Theoretical foundations}
 \subsection{Musical Computation}
@@ -240,15 +240,17 @@ For example, consider the two images below, which compare the same violin audio 
  \centering
  \includegraphics[width=\linewidth]{figs/time_domain_violin.png}
  \caption{One second time domain violin sample.}
+ \Description{One second time domain violin sample.}
 \end{figure}
 
 \begin{figure}[h]
  \centering
  \includegraphics[width=\linewidth]{figs/frequency_doimain_violin.png}
- \caption{TThe same sample in frequency domain.}
+ \caption{The same one second frequency domain violin sample.}
+ \Description{One second frequency domain violin sample.}
 \end{figure}
 
-s the figures show, there is a main frequency that defines the pitch of the sound, along with many other frequencies that allow the ear to identify the instrument and distinguish between different kinds of sounds.
+As the figures show, there is a main frequency that defines the pitch of the sound, along with many other frequencies that allow the ear to identify the instrument and distinguish between different kinds of sounds.
 
 \subsubsection{Audio digitalization}
 
@@ -259,7 +261,7 @@ Sampling consists of recording a sequence of wave amplitudes at fixed intervals.
 \begin{figure}[h]
  \centering
  \includegraphics[width=\linewidth]{figs/signal_sampling.png}
- \caption{Signal sampling. Source: \cite{usp:logo}}
+ \caption{Signal sampling.}
  \Description{Sinal sampling.}
 \end{figure}
 
@@ -367,7 +369,7 @@ However, as described in the section on timbre, one intuitive and efficient way 
 
 That said, this approach alone is not sufficient, because the Fourier Transform considers the entire audio signal at once, mixing different parts of a sound sample. For example, if a sample contains three different pitches in sequence, its frequency-domain representation will show them simultaneously, which may give the impression that the timbre is a mixture of all these pitches (similar to a chord rather than a sequence).
 
-In fact, according to Claesson (2019), FFT-based spectral comparison is valid but only a part of the solution. He highlights the following additional metrics:
+In fact, according to \textcite{claesson2021resynthesis}, FFT-based spectral comparison is valid but only a part of the solution. He highlights the following additional metrics:
 
 \begin{itemize}
     \item FFT Distance: This consists of computing the Fast Fourier Transform of the two samples being compared and then calculating the normalized Euclidean distance between them (the maximum distance is 1, and the minimum is 0).
@@ -375,11 +377,11 @@ In fact, according to Claesson (2019), FFT-based spectral comparison is valid bu
     \item Log-Mel Spectogram Distance: Similar to the previous metrics, but based on the Log-Mel Spectrogram, which is essentially an adaptation of the FFT spectrum that incorporates human auditory perception. In summary, the Log-Mel Spectrogram is obtained by computing the STFT, mapping the frequencies onto the Mel scale (explained later in this document), and finally projecting the amplitudes onto a logarithmic scale.
 \end{itemize}
 
-In addition to these three metrics, Claesson also recommends the use of Euclidean Distance of the Envelope to compare audio envelopes. This approach can be very useful, but since this work is focused on the similarity between original and synthesized audio in terms of timbre, the envelope comparison, while important for real-world applications, falls outside the scope of the present study.
+In addition to these three metrics, \textcite{claesson2021resynthesis} also recommends the use of Euclidean Distance of the Envelope to compare audio envelopes. This approach can be very useful, but since this work is focused on the similarity between original and synthesized audio in terms of timbre, the envelope comparison, while important for real-world applications, falls outside the scope of the present study.
 
 \subsubsection{Mel-Scale Representation}
 
-The Mel scale was proposed by Stevens, Volkmann, and Newman in 1937 (Claesson, 2019), and its main purpose is to reflect the human perception of frequency.
+The Mel scale was proposed by Stevens, Volkmann, and Newman in 1937 (\textcite{claesson2021resynthesis}), and its main purpose is to reflect the human perception of frequency.
 
 The key difference from the linear scale is that, as the values on the scale increase, the perceptual difference between two adjacent points becomes smaller (and the corresponding difference in hertz is also reduced).
 
@@ -394,7 +396,7 @@ For a better understanding of this conversion, consider the following graph, whi
 \begin{figure}[h]
  \centering
  \includegraphics[width=\linewidth]{figs/mel_scale.png}
- \caption{Comparision between linear hertz scale and Mel scale (Claesson, 2019).}
+ \caption{Comparision between linear hertz scale and Mel scale (\textcite{claesson2021resynthesis}).}
  \Description{Comparision between linear hertz scale and Mel scale.}
 \end{figure}
 
@@ -456,28 +458,44 @@ A CNN is typically divided into two stages. The first stage consists of the appl
 
 \section{Related work}
 
+It is not the first work to explore the idea of using a neural network to predict the appropriate parameters for a sound synthesizer. However, the main innovation here is the choice of CNNs to analyze the sound to be imitated. The main reasons are presented below:
+
+\begin{itemize}
+\item The ability of CNNs to process raw audio inputs.
+\item The potential of CNNs to capture the temporal structure of sound samples.
+\item The near real-time performance of CNNs after training, which can be an advantage for future practical applications.
+\end{itemize}
+
+However, the following works were consulted to support this research and to guide the methodological comparison. The results, in fact, are difficult to compare due to the intrinsically different measurement scales:
+
+\textcite{claesson2021resynthesis} proposed the re-synthesis of instrumental sounds using machine learning models combined with an FM synthesizer. However, \textcite{claesson2021resynthesis} did not use CNNs or the raw signal. Instead, he employed the STFT spectrogram as input (in other words, a frequency-domain representation of the signal) which may simplify the learning process but does not fully exploit the temporal information present in the audio.
+
+\textcite{steinmetz2022ddx7} introduced DDX7, a differentiable FM synthesizer designed for the re-synthesis of musical instrument sounds. The strength of this work lies in the use of a type of CNN known as a Temporal Convolutional Network (TCN). However, their approach differs from the present work in terms of the chosen target values for the model. DDX7 operates directly on the Mel-spectrum representation, integrating it into the loss function. This was impressive, as it provided the neural network with a loss function aligned with one of the most common audio comparison metrics. At the same time, this approach requires the synthesizer to be included in the training loop, which is more computationally expensive in terms of both memory and processing. Furthermore, the present work emphasizes the idea of strong generalization by generating a wide variety of parameter combinations through controlled random selection of FM parameters, as explained in the next section.
+
+Finally, \textcite{kiranyaz2021survey} presented a comprehensive survey on 1D convolutional neural networks (CNNs) and their applications, highlighting their effectiveness in sequential data such as audio signals. Although this work does not focus on the same purpose—namely, the re-synthesis of audio samples—it explores various use cases for one-dimensional convolutional neural networks, including audio signal processing. This survey is an important reference that validates the applicability of CNNs to audio signals and their ability to capture the temporal structure of sound.
+
 \section{Proposed approach}
 
 The overall idea of the project can be summarized as follows:
 
-\textit{Use AI to guide an FM synthesizer in simulating any instrument.}
+\textit{Use AI to guide an FM synthesizer in simulating any instrument, or desired sound.}
 
 Or, in a more detailed explanation:
 
-\textit{Use a Convolutional Neural Network (CNN) to analyze an instrument's sound sample and predict the correct parameters for an FM synthesizer to re-synthesize the ``same'' sound, enabling the synthesizer to simulate that instrument playing any song.}
+\textit{Use a Convolutional Neural Network (CNN) to analyze a sound signal sample, and predict the correct parameters for an FM synthesizer to re-synthesize the ``same'' sound, enabling the synthesizer to simulate that desired ``voice'' playing any song.}
 
 However, this idea is still quite abstract and broad. Therefore, consider the following steps to achieve the project's goal:
 
 \begin{enumerate}
 \item Implement a simple FM synthesizer, which can later be used both to generate the dataset and to test the ability to re-synthesize a sound.
-\item Generate an audio dataset with random audio samples, each created by randomly selecting FM synthesizer parameters, essentially recording tuples of (parameter values; audio sample).
+\item Generate an audio dataset composed of random samples, each created by randomly selecting FM synthesizer parameters. This essentially records tuples of (parameter values, audio sample) and explores the parameter space on a large scale.
 \item Train a CNN to predict the correct parameters for the same FM synthesizer, given only an audio sample.
 \item Evaluate the model's results using the NSynth dataset to test its generalization capabilities.
 \end{enumerate}
 
 Frequency Modulation Synthesis was chosen because it is one of the most common and effective methods for generating audio samples, owing to its simplicity and low computational cost.
 
-This technique became extremely popular in the 1980s, when Yamaha released the Yamaha DX7 synthesizer, and in the 1990s it became a standard for many commercial synthesizers, and it is still used today in the production of electronic music (Claesson, 2019).
+This technique became extremely popular in the 1980s, when Yamaha released the Yamaha DX7 synthesizer, and in the 1990s it became a standard for many commercial synthesizers, and it is still used today in the production of electronic music (\textcite{claesson2021resynthesis}).
 
 However, the effective use of this technique depends on advanced knowledge to select the right parameters for generating good results, which can involve thousands of parameters.
 
@@ -498,9 +516,11 @@ Additionally, as described before, each FM Synthesis operator produces additiona
 Thus, the current work aims to use a CNN model, since it is a very effective method for learning patterns, respecting the internal data structure, and without requiring a lot of preprocessing work.
 In other words, a CNN can simultaneously learn the time-dependent aspects of an audio signal and can act as a pattern extractor, by applying a sequence of filtering operations, allowing the use of the raw audio format as input.
 
-And so, to train the CNN model, a generated random dataset will be used, which main advantage is that it contains both the audio signal and the expected parameters for generating each sample sound. Therefore, the training process is straightforward and should yield good performance.
+To train the CNN model, a randomly generated dataset will be used. Its main advantage is that it contains both the audio signal and the corresponding parameters used to generate each sample. In addition, this approach covers a wide range of the parameter space.
 
-The figure below presents the overall scheme for this training process.
+Consequently, the training process is straightforward and is expected to yield good performance.
+
+The figure below presents the overall scheme of this training process.
 
 \begin{figure}[h]
  \centering
@@ -531,20 +551,13 @@ The proposed approach is, after the model training, to use another external data
 \item Evaluate the results
 \end{enumerate}
 
-
-
-
-
-
-
-
 \section{Experiments}
 
 \subsection{Setup}
 
 \subsubsection{Implemented FM Synthesizer}
 
-There are several well-known FM synthesizers on the market, but most are not open-source. Additionally, commercial synthesizers often have a vast number of parameters that can be used to control the audio production process. For example, Native Instruments' FM8 can use around 1,000 parameters (Claesson, 2019), and Teenage Engineering’s OP-1 synthesizer can be configured with up to $10^{76}$ parameters (Claesson, 2019).
+There are several well-known FM synthesizers on the market, but most are not open-source. Additionally, commercial synthesizers often have a vast number of parameters that can be used to control the audio production process. For example, Native Instruments' FM8 can use around 1,000 parameters (\textcite{claesson2021resynthesis}), and Teenage Engineering’s OP-1 synthesizer can be configured with up to $10^{76}$ parameters (\textcite{claesson2021resynthesis}).
 
 This incredibly large number of parameters is intended to give users fine-grained control over the generated audio, allowing for a wide variety of pitches (simulating a broad range of instruments and even non-instrument sounds, such as bird songs or car horns, among others).
 
@@ -582,7 +595,7 @@ And it is important to highlight that the high sample rate of 48 kHz was chosen 
 
 This project will use two datasets, each for a specific purpose: the first is the generated dataset, used for training, and the second is the NSynth dataset, used to evaluate the model's generalization capabilities.
 
-One of the most challenging steps in the KDD process is obtaining and processing data. However, for the purposes of this work, an effective approach can be used. Similar to Claesson's approach (Claesson, 2019), since the goal is to achieve good control over the synthesizer parameters, it is sufficient to generate many samples of synthesizer parameters and their respective audio outputs.
+One of the most challenging steps in the KDD process is obtaining and processing data. However, for the purposes of this work, an effective approach can be used. Similar to Claesson's approach (\textcite{claesson2021resynthesis}), since the goal is to achieve good control over the synthesizer parameters, it is sufficient to generate many samples of synthesizer parameters and their respective audio outputs.
 
 Therefore, the main dataset will consist of 5,000 samples generated by the implemented FM synthesizer, with the following characteristics:
 
@@ -755,14 +768,23 @@ Other important highlights:
 
 \subsubsection{Training/Validation Results}
 
-The training and validation results can be viewed in the following:
+The training and validation results are shown in the following table, which summarizes the last five epochs of training:
 
-\begin{figure}[h]
- \centering
- \includegraphics[width=\linewidth]{figs/training_validation_table_results.png}
- \caption{Evolution of loss functions over the last five epochs.}
- \Description{Evolution of loss functions over the last five epochs.}
-\end{figure}
+\begin{table}
+  \caption{Training and Validation Metrics by Epoch}
+  \label{tab:train_val_metrics}
+  \begin{tabular}{ccccccc}
+    \toprule
+    Epoch & Loss & MAE & MSE & Val\_Loss & Val\_MAE & Val\_MSE \\
+    \midrule
+    41 & 0.5988 & 0.5265 & 0.5455 & 0.6547 & 0.5410 & 0.6013 \\
+    42 & 0.5926 & 0.5213 & 0.5389 & 0.6578 & 0.5521 & 0.6035 \\
+    43 & 0.5896 & 0.5189 & 0.5350 & 0.6555 & 0.5348 & 0.6006 \\
+    44 & 0.5855 & 0.5165 & 0.5296 & 0.6790 & 0.5581 & 0.6218 \\
+    45 & 0.5815 & 0.5129 & 0.5241 & 0.6744 & 0.5512 & 0.6168 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 \begin{figure}[h]
  \centering
@@ -808,7 +830,9 @@ To achieve this, the model was applied to the NSynth test dataset, and the predi
   \item Log-mel-spectrogram distance
 \end{itemize}
 
-However, to achieve a good evaluation, the proposed metrics were also used to compare each NSynth audio with a baseline, which consists of a pure sinusoidal signal, with a frequency of 440 Hz (i.e., the A4 note, which is used as a reference to tune the majority of instruments).
+However, before using the predicted parameters as input to the synthesizer, a simple function was applied to approximate each ratio parameter to the nearest discrete ratio, according to the common behavior of musical harmonics (the same set of ratios used to randomize 90\% of the generated dataset). Furthermore, some clipping operations were also applied to enforce the same limits imposed on the randomly generated dataset, such as maximum and minimum values for beta parameters.
+
+In order to achieve a good evaluation, the proposed metrics were also used to compare each NSynth audio with a baseline, which consists of a pure sinusoidal signal, with a frequency of 440 Hz (i.e., the A4 note, which is used as a reference to tune the majority of instruments).
 
 Then, the results can be seen in the following:
 
@@ -893,8 +917,37 @@ Furthermore, to facilitate a better understanding, the metrics were also compare
 And as can be seen, on average, the top three models performed best for the mallet, keyboard, and guitar families.
 
 \section{Conclusion}
+As proposed in the introduction of this work, there are two main goals to achieve with this technique: the first is to re-synthesize the sounds of real instruments, and the second is to explore the parameter space in a randomized way, testing whether the model can generalize the results. This generalization is a strong indication that the model can guide the synthesizer to reproduce arbitrary sounds.
+
+As shown in the results, the CNN model demonstrated good generalization ability (as observed in the test results over the randomly generated dataset) and also showed strong performance in the re-synthesis of real instruments (as evidenced by the audio comparison metrics between the NSynth dataset and the corresponding re-synthesized audio).
+
+Furthermore, the results indicate that the model is not extremely biased toward specific instrument families. As presented in the previous section, the normalized log-mel metric remained within a reasonable range across all instrument families, and the difference between the best and worst cases was not excessively high.
+
+The proposed approach clearly shows that both pillars of the initial hypothesis were valid:
+\begin{itemize}
+\item CNNs are highly effective for feature extraction from instrument audio samples.
+\item The approach of generating a randomized dataset, aiming to cover a wide area of the parameter space, was efficient in achieving good control over a specific FM synthesizer.
+\end{itemize}
+
+However, this work also has clear limitations that should be highlighted, which at the same time represent opportunities for future research:
+\begin{itemize}
+\item Generic dataset: Adopt a new dataset composed of generic audio samples, not limited to musical instruments (e.g., bells, horns, bird calls, etc.), which could serve as inspiration for musicians.
+\item Broader ADSR envelope variations: Since the main goal was related to real instrument re-synthesis, and the test dataset (NSynth) is composed of such sounds, only a common linear ADSR envelope was implemented. While sufficient for this purpose, it would certainly not be adequate for a more generic dataset.
+\item Exploring more FM synthesis algorithms: During the experiments, only two FM algorithms were evaluated, and only one produced good results (the one with three serial operators and two parallel operators, which was used for all reported results). However, professional FM synthesizers typically allow arbitrary operator configurations, which could be explored further.
+\end{itemize}
 
 \section{Future Work}
+
+In order to highlight future research opportunities, the following directions appear most promising:
+
+\begin{itemize}
+\item Explore the use of more generic datasets.
+\item Implement and evaluate a wider range of ADSR envelopes and FM algorithms.
+\item Investigate less straightforward neural network architectures, testing whether feature extraction through core representation (e.g., autoencoder networks) could be effective for generic datasets.
+\item Combine approaches from related works: for example, using the STFT of each sample as input to the regression stage of the network (\textcite{claesson2021resynthesis}) alongside CNN-based feature extraction from raw signals, or applying the log-mel metric directly in the loss function, as in DDX7 (\textcite{steinmetz2022ddx7}).
+\item Experiment with AutoML techniques after CNN feature extraction, as a way to improve the regression stage of the model. In this context, the autoencoder hypothesis could also be used to pre-train the CNN independently.
+\item Adopt a professional FM synthesizer implementation (with the necessary permissions) to re-train the entire model.
+\end{itemize}
 
 \begin{acks}
 This work is supported by \textit{Coordenação de Aperfeiçoamento de Pessoal de Nível Superior}~(CAPES), \textit{Conselho Nacional de Desenvolvimento Científico e Tecnológico}~(CNPq), grants 406417/2022-9, 102475/2024-5, and 312209/2022-3, and \textit{Fundação de Amparo à Pesquisa do Estado de São Paulo}~(FAPESP), grant 2020/09835-1~(CPA IARA). 
@@ -907,10 +960,7 @@ This work is supported by \textit{Coordenação de Aperfeiçoamento de Pessoal d
 \printbibliography
 
 
-
 \end{document}
 \endinput
 %%
 %% End of file `sample-sigconf-biblatex.tex'.
-
-Claesson
