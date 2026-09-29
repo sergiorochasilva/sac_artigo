@@ -1,0 +1,718 @@
+\documentclass[10pt,conference]{IEEEtran}
+
+
+\title{\LARGE \bf
+Automatic Estimation of FM Synthesis Parameters by Convolutional Neural Network
+}
+
+% \author{Albert Author$^{1}$ and Bernard D. Researcher$^{2}$% <-this % stops a space
+% \thanks{*This work was not supported by any organization}% <-this % stops a space
+% \thanks{$^{1}$Albert Author is with Faculty of Electrical Engineering, Mathematics and Computer Science,
+%         University of Twente, 7500 AE Enschede, The Netherlands
+%         {\tt\small albert.author@papercept.net}}%
+% \thanks{$^{2}$Bernard D. Researcheris with the Department of Electrical Engineering, Wright State University,
+%         Dayton, OH 45435, USA
+%         {\tt\small b.d.researcher@ieee.org}}%
+% }
+
+
+\usepackage{hyperref}
+% \hypersetup{allcolors=black,
+%             linkbordercolor={1 1 1},
+%             urlbordercolor={1 1 1}}
+
+
+\usepackage{multirow}
+\usepackage{subfig}
+\usepackage{balance}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{color}
+
+
+\newcommand{\basg}[1]{{\color{blue}[#1]}}
+\newcommand{\sergio}[1]{{\color{red}[#1]}}
+
+\begin{document}
+
+\author{Anonymous Authors}
+
+\maketitle
+\thispagestyle{empty}
+\pagestyle{empty}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\begin{abstract}
+FM synthesis is one of the most renowned techniques for sound synthesis, and although it is an old method, it remains widely used today. It is simple, computationally inexpensive, and capable of producing high-quality results. However, the successful use of this type of audio synthesis presents a significant challenge: selecting the correct parameters for the synthesizer. This process is not precise, and there is no fully deterministic procedure to follow. Musicians are usually guided by intuition and an empirical trial-and-error process. To revive this technique and leverage its benefits, the use of CNN models appears to be a very promising option, as they can help musicians achieve convincing results, imitating real instruments in a short time and at a low cost, or even creating totally unpredictable timbres and effects. Therefore, this work explores this approach by creating a pipeline capable not only of training a CNN model to predict the appropriate parameters that enable an FM synthesizer to resynthesize original audio samples (such as acoustic instruments), but also of exploring the synthesizer’s parameter space broadly, allowing it to reproduce any arbitrary desired sound. The proposed approach proved to be efficient for both objectives. The developed model was able to approximate unseen sound samples (of real instruments), and the error metrics converged to satisfactory values even when using an exploratory dataset generation process (a synthetic dataset specifically constructed to explore the FM synthesizer’s capabilities).
+\end{abstract}
+
+
+\section{Introduction}
+
+Musical expression is one of humanity’s earliest experiences and one of the most valued forms of art. This art form has been cultivated for centuries. The Chinese, three thousand years before Christ, had already developed complex systems of musical theory, and Greek culture not only cultivated its study but also associated it with religion, assigning divine characteristics to protect and honor music itself \cite{med1996teoria}.
+
+Although music is a subjective form of human knowledge, the recorded music industry today generates approximately US\$29 billion \cite{ifpi2025} annually, and thus its value ceases to be purely subjective.
+
+It is precisely in this context that the artifice of synthesized sound appears in history. It emerged after the first electronic instruments and, due to the periodic nature of sound, the earliest synthesizers were composed of simple analog oscillators that could be manually controlled through operations such as summing and filtering \cite{holmes2016electronic}.
+
+In the 1980s, with the release of the Yamaha DX7 synthesizer, the history of music synthesis took a major turn. The Yamaha DX7 marked the first major success of a revolutionary technique developed by John M. Chowning at Stanford University and later popularized by Yamaha \cite{claesson2021resynthesis}.
+
+This event represented a new milestone in sound synthesis, not only because of its popularity, but also because it made the reproduction of both realistic instrument simulations and entirely new kinds of sounds easily accessible to musicians and composers of all levels. In fact, the success of FM synthesis was so great that the technique remains in use to this day \cite{holmes2016electronic}.
+
+Thus, the primary goal of the present work is to guide a frequency modulation (FM) synthesizer to reproduce instrument sound samples, while also developing a process that fully explores the expressive capabilities of the FM synthesizer itself, approximating the re-synthesis of any input sound.
+
+This approach aligns with one of the key historical advantages of FM synthesizers: their ability to create sounds that cannot be produced by traditional acoustic instruments.
+
+Although FM synthesis is considered an old technique compared to newer approaches such as wavetable synthesis or GAN-based sound generation, it remains widely used within today’s complex musical ecosystem due to its advantages: it is easy to use, well-suited for experimenting with new and even unpredictable sounds (such as spatial effects), and easily adaptable to real-time composition.
+
+Researchers therefore continue to improve the control of traditional FM synthesis parameters, which are typically adjusted through a tedious empirical process. For instance, \cite{claesson2021resynthesis} predicted FM synthesizer parameters using frequency-domain representations as input, while \cite{steinmetz2022ddx7} proposed a TCN-based approach that couples the synthesizer directly into the training loop.
+
+In this context, the present work adopts a CNN-based solution that learns a direct mapping from raw audio to FM parameters; the related work is discussed in Section~\ref{sec:related}.
+
+Furthermore, beyond a simple re-synthesis exercise, the present work aims to develop a process that allows the model to achieve a broad understanding of the entire parameter space of the applied FM synthesiser. The idea behind the proposed methodology is that if the model can learn the FM synthesizer’s parameter space in a comprehensive way, it can then be used to simulate any sound within the synthesizer’s capabilities, making the experience of a hypothetical future user (a musician or composer) much more efficient in achieving any desired sound.
+
+The present work aims not only to apply a machine learning technique but also to propose an approach for developing models that can be adapted to any FM synthesizer, achieving good results for interested users and allowing good integration into real composition workflows.
+
+The remainder of this paper is organized as follows. Section~\ref{sec:fund} presents the fundamental concepts related to music. Section~\ref{sec:related} discusses the related work. Section~\ref{sec:our_proposal} describes the details of the proposed approach and the experimental setup. Section~\ref{sec:experiments} presents and analyzes the results. Finally, Section~\ref{sec:conclusion} provides the conclusions of this work and outlines directions for future research.
+
+\section{Musical concepts} \label{sec:fund} 
+
+Although this work is grounded in established machine learning methods, its application relies on fundamental notions from music and sound analysis. This section summarizes the concepts most relevant to the study.
+
+\subsection{Musical Computation}
+
+Musical computation is an interdisciplinary field dedicated to the digital processing of musical information. While a comprehensive overview is beyond the scope of this article, it is necessary to outline the basic physical and computational elements of sound.
+
+\textbf{Audio} is a mechanical pressure wave that can be converted into an electrical signal by a microphone. As a wave phenomenon, sound is characterized by:
+
+\begin{itemize}
+    \item \textbf{Pitch:} The fundamental frequency determining perceived height.
+    \item \textbf{Duration:} The temporal extent of an audible event.
+    \item \textbf{Loudness:} The perceived intensity of the waveform, linked to amplitude.
+    \item \textbf{Timbre:} The spectral “color" of a sound, defined by its harmonic structure.
+\end{itemize}
+
+Timbre is commonly described as the "color" of sound. From a signal-processing perspective, it is determined by the distribution, relative amplitudes, and temporal evolution of the harmonic components present in an audio signal. In acoustic instruments, these components arise from multiple simultaneous vibration modes, whose behavior depends on physical characteristics such as material, geometry, and excitation mechanism. This complex interaction produces a distinctive spectral structure that characterizes each instrument’s timbre. To analyze this property, audio signals are commonly transformed from the time domain to the frequency domain using Fourier-based techniques~\cite{benson2008music}.
+
+\subsection{Audio digitization}
+
+Digital audio requires the discretization of the analog signal. Sampling \cite{po2022sampling} records amplitude values at regular time intervals. According to the Nyquist–Shannon theorem, the sampling rate must exceed twice the highest frequency to be represented. Although human hearing extends up to approximately 20~kHz, music analysis tasks can use sampling rates around 16~kHz, which adequately capture the spectral content of most instruments.
+
+\subsection{Sound synthesis}
+
+Three mathematically grounded synthesis techniques are especially relevant: \textbf{Additive synthesis} constructs sound by summing sinusoidal components, \textbf{Subtractive synthesis} starts from a harmonically rich signal and applies filters to shape the spectrum, and \textbf{FM synthesis} produces complex spectra through frequency modulation between oscillators.
+
+\textbf{FM Synthesis}, introduced by Chowning~\cite{chowning1973synthesis}, generates sidebands around a carrier frequency, enabling the creation of rich timbres with relatively few parameters. Its efficiency and flexibility contributed to the success of the Yamaha DX7 synthesizer \cite{steinmetz2022ddx7, lazzarini2023higherorder}.
+
+\subsection{Audio comparison}
+
+Comparing audio signals in a perceptually meaningful way is challenging and computationally demanding. Standard methods \cite{claesson2021resynthesis} include:
+
+\begin{itemize}
+    \item \textbf{FFT Distance:} Euclidean distance between magnitude spectra obtained via the Fast Fourier Transform.
+    \item \textbf{STFT Distance:} Extension of the previous metric using short, overlapping time windows.
+    \item \textbf{Log-Mel Spectrogram Distance:} A perceptually motivated version computed on the Mel-frequency scale \cite{claesson2021resynthesis,chulev2024improving}.
+\end{itemize}
+
+Envelope-based metrics may also be used, but since this study focuses on timbral similarity, envelope comparison falls outside its scope.
+
+\section{Related work} \label{sec:related}
+
+It is not the first work to explore using a neural network to predict appropriate parameters for a sound synthesizer. However, the central decision in this study is the use of CNNs on raw audio, motivated by their ability to model temporal structure while avoiding hand-crafted feature pipelines. As emphasized by \cite{sutton2019bitterlesson}, greater reliance on large-scale data and computation often outperforms approaches that depend on manually engineered representations, which supports the use of raw signals rather than frequency-domain preprocessing. This perspective is also aligned with the effectiveness of 1D CNNs for sequential data, as documented by \cite{kiranyaz2021survey}.
+
+Claesson et al.\ \cite{claesson2021resynthesis} proposed the re-synthesis of instrumental sounds using machine learning models combined with an FM synthesizer, but their approach relied on STFT spectrograms as input rather than raw audio, which may simplify learning yet limits the use of temporal information.
+
+Steinmetz et al.\ \cite{steinmetz2022ddx7} introduced DDX7, a differentiable FM synthesizer for re-synthesizing musical instrument sounds. Their method employs a Temporal Convolutional Network (TCN) and integrates Mel-spectrum losses, providing a perceptually aligned objective. This design, however, requires embedding the synthesizer in the training loop, increasing computational cost. In contrast, the present work emphasizes a data-driven exploration of the FM parameter space without coupling the synthesizer to the optimization process.
+
+Finally, Kiranyaz et al.\ \cite{kiranyaz2021survey} presented a comprehensive survey on 1D convolutional neural networks (CNNs) and their applications, highlighting their effectiveness in sequential data such as audio signals. Although this work does not focus on re-synthesis, it supports the suitability of CNN-based architectures for learning temporal patterns directly from raw audio.
+
+\section{Methodology} \label{sec:our_proposal}
+
+This section introduces the proposed pipeline for guiding an FM synthesizer toward a target timbre. Since this idea is still quite abstract and broad, the following steps are considered:
+
+\begin{enumerate}
+    \item \textbf{Implementing FM synthesizer:} Implement a simple FM synthesizer, which can later be used both to generate the dataset and to test the ability to re-synthesize a sound.
+    \item \textbf{Generating the dataset:} Generate a synthetic audio dataset composed of random samples, each created by randomly selecting FM synthesizer parameters. This essentially records tuples of (parameter values, audio samples) and explores the parameter space at a large scale.
+    \item \textbf{Training the CNN:} Train a CNN to predict the correct parameters for the same FM synthesizer, given only an audio sample.
+    \item \textbf{Evaluating the Model:} Evaluate the model's results using the NSynth dataset to test its generalization capabilities.
+\end{enumerate}
+
+Frequency Modulation Synthesis was chosen for its efficiency and expressive parameterization, but effective manual control remains difficult and often requires expert knowledge. Therefore, simplifying parameter selection provides a strong justification for this study, and AI models offer a practical way to learn control patterns. Predicting parameters is also computationally cheaper than generating audio directly and remains compatible with real-time performance.
+
+Regarding the configuration, all experiments were conducted in an environment with Python 3.11.2, TensorFlow 2.19.0, Keras 3.11.1, Nvidia-cuda 12.5.82, Nvidia-cudnn 3.0.75, Nvidia Driver 535.247.01, CUDA 12.2, and a GPU NVIDIA GeForce GTX 1650 (4GB memory).
+
+% \begin{itemize}
+%     \item Python Version: 3.11.2
+%     \item Tensorflow Version: 2.19.0
+%     \item Keras Version: 3.11.1
+%     \item Nvidia-cuda Version: 12.5.82
+%     \item Nvidia-cudnn Version: 3.0.75
+%     \item Nvidia Driver Version: 535.247.01
+%     \item CUDA Version: 12.2
+%     \item GPU: NVIDIA GeForce GTX 1650 (4GB memory)
+% \end{itemize}
+
+\subsection{Implementing FM synthesizer}
+
+There are several well-known FM synthesizers on the market, but most are not open-source. Additionally, commercial synthesizers often have a vast number of parameters that can be used to control the audio production process. For example, Native Instruments' FM8 can use around 1,000 parameters \cite{claesson2021resynthesis}, and Teenage Engineering’s OP-1 synthesizer can be configured with up to $10^{76}$ parameters \cite{claesson2021resynthesis}.
+
+This incredibly large number of parameters is intended to give users fine-grained control over the generated audio, allowing for a wide variety of pitches (simulating a broad range of instruments and even non-instrument sounds, such as bird songs or car horns, among others). However, since the scope of this project is not focused on a commercial solution but rather on research purposes, a simple FM synthesizer will suffice. Accordingly, a deliberately simple implementation was adopted to validate the pipeline and the chosen architecture rather than to pursue perfect re-synthesis; a more expressive synthesizer is left for future work (Section~\ref{sec:conclusion}).
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=.8\columnwidth]{figs/first_part.png}
+    \caption{Synthesis implementation overview.}
+    \label{fig:met1}
+\end{figure}
+
+Figure~\ref{fig:met1} summarizes the synthesis implementation pipeline used in this study.
+
+Therefore, this work will implement a basic FM synthesizer with only 6 operators, inspired by the classic Yamaha DX7, which was one of the most disruptive milestones in the history of electronic music composition. In fact, this simple setup is enough to cover all FM synthesis theories and achieve good performance during AI model evaluation. In summary, the implemented FM Synthesizer (Figure~\ref{fig:FMSynth}) consists of 5 modulator operators, 1 carrier operator, 1 ADSR envelope, and 2 synthesis algorithms (one completely serial, and another with 3 serial operators followed by 2 parallel operators).
+
+\begin{figure}[h] 
+    \centering
+    \includegraphics[width=.9\linewidth]{figs/algs2.png}
+    \caption{FM Synthesizer Algorithms.}
+    \label{fig:FMSynth}
+\end{figure}
+
+
+To summarize, the implemented synthesizer renders the audio signal according to the following steps:
+
+\begin{enumerate}
+    \item Generate each operator signal by applying it to modulate the phase of the next operator in the sequence. In this implementation, only the phase is varied (similar to the Yamaha DX7), whereas a full FM synthesis would also be able to vary the frequency. This simplification helps to avoid complex noise-handling issues and promotes numerical stability. All signals are rendered at a 48 kHz sample rate.
+    \item Combine the output of each operator according to the synthesis algorithm (when there are parallel operators, they are summed).
+    \item Apply the ADSR envelope to the signal.
+    \item Downsample the signal from 48 kHz to 16 kHz (applying also a low-pass filter to avoid aliasing).
+\end{enumerate}
+
+It is important to highlight that the high sample rate of 48 kHz was chosen to allow the FM synthesis to work well enough, since at high frequencies, there is a risk of obtaining aliasing and noise (due to the extremely high frequency components generated by the normal spacing of the FM operators). Furthermore, the low-pass filtering, used to downsample, is also useful to prevent the aliasing problem (after the downsampling process).
+
+Finally, it is important to highlight that the entire synthesizer relies on 16 input parameters, consisting of the beta and ratio values for each modulator and for the carrier (totaling 12 parameters), plus 4 parameters for the ADSR envelope (attack, decay, sustain, and release times). As mentioned earlier, it is a very simple FM synthesizer, yet fully featured and sufficient for the purposes of the current research.
+
+\subsection{Generating the dataset}
+
+This work utilizes two datasets, each serving a distinct purpose: the generated dataset, hereafter referred to as the synthetic dataset, which is used for training, and the NSynth dataset, which is used to evaluate the model’s generalization capabilities. However, in this section, only the first dataset will be considered, while the second will be addressed in Section~\ref{sec:evaluation_method}.
+
+One of the most challenging steps in the KDD process is obtaining and processing data. However, for the purposes of this work, an effective approach can be used. Similar to Claesson's approach \cite{claesson2021resynthesis}, since the goal is to achieve good control over the synthesizer parameters, it is sufficient to generate many samples of synthesizer parameters and their respective audio outputs.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=.8\columnwidth]{figs/second_part.png}
+    \caption{Dataset generation overview.}
+    \label{fig:met2}
+\end{figure}
+
+Figure~\ref{fig:met2} summarizes the dataset generation pipeline.
+
+The dataset used to train the model will consist of 5,000 samples generated by the implemented FM synthesizer, each 4 seconds in duration, monophonic (1-channel) at a 16 kHz sample rate (generated at 48 kHz and downsampled to 16 kHz for compatibility with NSynth), with pitches varying between 20 Hz and 6,000 Hz, and random ADSR envelopes.
+
+The expectation is to achieve a level of learning where the model can accurately predict the parameters for a wide range of sounds that can be generated by the implemented FM synthesizer.
+
+However, as the main purpose is to re-synthesize real instrument samples, the randomness of this dataset should be controlled to achieve reasonable music property samples, or, in other words, the dataset was constructed respecting the well-known limits and characteristics of real instruments:
+
+\begin{itemize}
+    \item The minimum frequency for the carrier is 20 Hz, and the maximum is 6 kHz (for example, the maximum frequency for a violin is approximately 3 kHz; another important aspect for this maximum choice is that it is necessary to stay under 8 kHz due to the output sample rate, because of the Nyquist frequency). The frequency is chosen by a uniform random distribution.
+    \item The minimum ratio for each modulator is 1/8, and the maximum is 8 (to avoid aliasing in the final signal). Two methods are used to select the ratio: a) with 90\% probability, the ratio will be a random uniform choice between discretized values (for example: 1/8, 1/6, ..., 2, 3, 54, ..., 8; the idea is to simulate a real instrument); and b) with 10\% probability, the ratio will be a uniform log distribution between 1/8 and 8 (allowing random metallic sounds, like bells, but respecting human auditory perception, where the difference between low frequencies is more perceived than between high frequencies).
+    \item The minimum beta is 0, and the maximum is 8 (also to avoid aliasing in the final signal). The beta is chosen by a uniform random distribution, controlled such that 20\% of the values are between 0 and 0.5, 60\% are between 0.5 and 3, and 20\% are between 3 and 8 (prioritizing rich timbres and avoiding pure sinusoidal sounds, as well as excessive metallic sounds).
+    \item The amplitude is fixed at 1.0, to avoid different combinations of beta and amplitude generating the same frequency spectrum and the same timbre (prioritizing the learning process).
+\end{itemize}
+
+Random ADSR parameters were sampled from uniform intervals as follows: attack in [0.005, 0.5] s, decay in [0.02, 0.6] s, sustain in [0.1, 0.9], and release in [0.05, 0.8] s.
+
+With these additional adjustments, the synthetic dataset will be more representative of simulating real instruments.
+
+Since each sample in the generated dataset is a complete 4-second sound (containing 64,000 audio samples, which corresponds to 16 kHz multiplied by 4 seconds), a simple 75/25 train-test split was used, resulting in 3,750 audio files for training and 1,250 for testing. From these 3,750 training files, 20\% are used for validation, resulting in 3,000 training samples and 750 validation samples.
+
+\subsection{Training the CNN}
+
+As described in Section~\ref{sec:fund}, timbre is defined by spectral components, but direct analytical inversion of FM parameters is impractical because each operator introduces additional frequency components. Therefore, the mapping from audio to parameters is learned from data using a CNN regressor operating on raw waveforms.
+
+To train the CNN model, the previously described synthetic dataset is used. Its main advantage is that it contains both the audio signal and the corresponding parameters used to generate each sample, and it covers a wide range of the parameter space. Consequently, the training process is straightforward and is expected to yield good performance.
+
+Figure~\ref{fig:met3} presents the overall scheme of this training process, and figure~\ref{fig:redes} illustrates the complete model architecture, composed of a CNN-based feature extractor and a regressor.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=.8\columnwidth]{figs/thrid_part.png}
+    \caption{Model training and optimization.}
+    \label{fig:met3}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \subfloat[][Feature extraction]{\includegraphics[width=0.21\textwidth,height=0.4\textwidth,trim={0 0 0 0.6cm},clip]{figs/rede1.png}} \label{fig:rede1}
+    \qquad
+    \subfloat[][Regressor]{\includegraphics[width=0.21\textwidth,height=0.4\textwidth,trim={0 0 0 0.85cm},clip]{figs/rede2.png}} \label{fig:rede2}
+    \caption{Overview of the entire Model Architecture}
+    \label{fig:redes}
+\end{figure}
+
+% The CNN feature extractor uses three Conv1D–MaxPooling blocks with filter sizes 8/16/32, kernel sizes 4/8/16, stride 1, and pool size 16 throughout. The regressor comprises two ReLU-activated dense layers with 0.5 dropout after the first, followed by a linear output layer. Optimization is performed with Nadam.
+
+The complete model is the combination of the two parts. The hyperparameters of each part are summarized in Tables~\ref{tab:hyperparams_cnn} and \ref{tab:hyperparams_regressor}, respectively.
+
+\begin{table} \small \centering
+  \caption{Hyperparameters of Feature Extraction (CNN part)}
+  \label{tab:hyperparams_cnn}
+  \begin{tabular}{cll}
+    \toprule
+    Component & Hyperparameter & Value \\
+    \midrule
+    \multirow{3}{*}{Conv1D (1)} 
+        & Filters & 8 \\
+        & Kernel size & 4 \\
+        & Strides & 1 \\
+    MaxPooling1D (1) & Pool size & 16 \\
+    \multirow{3}{*}{Conv1D (2)} 
+        & Filters & 16 \\
+        & Kernel size & 8 \\
+        & Strides & 1 \\
+    MaxPooling1D (2) & Pool size & 16 \\
+    \multirow{3}{*}{Conv1D (3)} 
+        & Filters & 32 \\
+        & Kernel size & 16 \\
+        & Strides & 1 \\
+    MaxPooling1D (3) & Pool size & 16 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+
+\begin{table} \small \centering
+  \caption{Hyperparameters of the Regressor Network}
+  \label{tab:hyperparams_regressor}
+  \begin{tabular}{lll}
+    \toprule
+    Component & Hyperparameter & Value \\
+    \midrule
+    \multirow{1}{*}{Dense (1)} 
+        & Activation & relu \\
+    Dropout & Rate & 0.5 \\
+    \multirow{1}{*}{Dense (2)} 
+        & Activation & relu \\
+    \multirow{1}{*}{Dense (Output)} 
+        & Activation & None \\
+    Optimizer & -- & Nadam \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+% Other important highlights:
+
+% \begin{itemize}
+%     \item The target variable is normalized to have a mean of 0 and a standard deviation of 1, prior to training.
+%     \item The Nadam optimizer was used.
+%     \item The Mean Squared Error (MSE) was used as the loss function.
+%     \item The recorded metrics were the Mean Absolute Error (MAE), and the Mean Squared Error (MSE).
+%     \item The model was trained for 200 epochs, with early stopping enabled using 20 epochs of patience and best weights restored.
+%     \item The model was trained with a batch size of 32.
+% \end{itemize}
+
+Other important highlights: the target variables were normalized to zero mean and unit variance; Nadam was used for optimization; MSE served as the loss function, with MAE and MSE recorded as metrics; training ran for up to 200 epochs with early stopping (patience of 20 and best weights restored); and a batch size of 32 was used.
+
+\subsubsection{Hyperparameters Optimization}
+
+To reach the previously defined architecture, after an initial phase of experiments aimed at selecting a generic architecture able to achieve the proposed goals, a randomized grid search process was applied to optimize the model’s hyperparameters.
+
+This randomized grid search did not differ substantially from the traditional process, but it is important to highlight the search space and the chosen strategy to obtain a good representation of the parameter space without requiring exhaustive experimentation. Table~\ref{tab:hyperparams_options} lists the searched hyperparameters and their respective value options.
+
+%The following hyperparameters and their respective options were used:
+
+\begin{table} \small \centering
+  \caption{Hyperparameters and Available Options}
+  \label{tab:hyperparams_options}
+\begin{tabular*}{\columnwidth}
+    {@{\extracolsep{\fill}}ll}
+%\begin{tabular}{ll}
+    \toprule
+    Hyperparameter & Options \\
+    %\multicolumn{1}{c}{Hyperparameter} & \multicolumn{1}{c}{Options} \\
+    \midrule
+    \multirow{2}{*}{Activation} & gelu, swish, elu, relu,  \\
+    & selu, silu \\
+    %Activation & gelu, swish, \{e,re,se,si\}lu\\
+    Bias (CNN) & True, False \\
+    Kernel Regularizer (CNN) & None, l1, l2 \\
+    Bias (Regressor) & True, False \\
+    Dropout (Regressor) & 0, 0.2, 0.3, 0.5 \\
+    Kernel Regularizer (Regressor) & None, l1, l2 \\
+    \multirow{2}{*}{Optimizer} & AdamW, RMSprop, Adam, \\
+    & Nadam, Adagrad, Adamax \\
+    \bottomrule
+  \end{tabular*}
+\end{table}
+
+However, calculating the total number of possible parameter combinations results in the remarkable value of 5,184 options. An exhaustive search over this space would take nearly nine days, given that 186 experiments required approximately seven hours.
+
+To make the process viable, a random shuffle of the parameter search space was applied, producing a new order of experiments that did not require exhausting all options of a given parameter before moving on to the next.
+
+Using this shuffled hyperparameter space, 186 experiments were conducted, representing nearly 3.6\% of the total and requiring about seven hours of training.
+
+This approach enabled the representation of a generic sample of the entire search space within a feasible time frame. Since any parameter option could appear in the sampled configurations, the random grid search allowed for faster and broader coverage of the parameter space.
+
+Furthermore, each combination was used to train for 30 epochs with an early stopping patience of 5. All tested hyperparameters and their respective error metric values were recorded using the MLflow tool, which enabled more accurate comparisons among the top solutions. This, in turn, helped guide the selection of good hyperparameters and supported a more targeted, exhaustive training phase, already informed by the most successful configurations.
+
+To provide a clearer understanding of this point, consider the experiment comparison graph presented in Figure~\ref{fig:graph}. Note that the following configurations appear successful, based on the three error metrics: RELU as activation function, CNN Bias equals to True, Regressor Bias equals to True, Regressor Dropout = 0.5, CNN Kernel Regularizer set to None, and Regressor Kernel Regularizer set to L2. It should be noted that the two best configurations, considering the MAE metric, were tested, and the second one (with respect to MAE) showed the best results without signs of overfitting.
+
+% \begin{itemize}
+% \item \textbf{Activation function:} RELU
+% \item \textbf{CNN Bias:} True
+% \item \textbf{Regressor Bias:} True
+% \item \textbf{Regressor Dropout:} 0.5
+% \item \textbf{CNN Kernel Regularizer:} None
+% \item \textbf{Regressor Kernel Regularizer:} L2
+% \end{itemize}
+
+
+\begin{figure*}[h]
+ \centering
+ \includegraphics[width=.9\linewidth]{figs/graph_grid_search.png}
+ \caption{MLflow grid search results showing the best error metrics (based on the test set).}
+ %\Description{MLflow grid search results showing the best error metrics.}
+ \label{fig:graph}
+\end{figure*}
+
+% \begin{figure}[h]
+%     \centering
+%     \includegraphics[width=\linewidth]{figs/cnn_simple_training.jpg}
+%     \caption{The overall training scheme.}
+%     \Description{The overall training scheme.}
+%     \label{fig:cnn}
+% \end{figure}
+
+\subsection{Evaluating the Model} \label{sec:evaluation_method}
+
+After training the CNN, a new dataset is used to evaluate the model’s ability to re-synthesize real instruments by calculating specific metrics focused on the FM synthesizer’s capacity to reproduce the same timbres.
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=.9\columnwidth]{figs/fourth_part.png}
+    \caption{Results evaluation.}
+    \label{fig:met4}
+\end{figure}
+
+Figure~\ref{fig:met4} illustrates the evaluation workflow used to assess generalization.
+
+The NSynth dataset, part of Google’s Magenta project, contains numerous real instrument samples, including both acoustic and electronic instruments, as well as some synthetic sounds generated by professional synthesizers. This dataset has a configuration similar to the one used for training, and its main purpose is to evaluate the model’s generalization capabilities, since it has never encountered it before.
+
+Only the test set of the NSynth dataset will be used, with the following characteristics: 4,096 samples; 4 seconds in duration; Monophonic samples (1-channel audio); 16 kHz audio sample rate; 11 instrument families; pitches ranging from 27.5 Hz to 4,186.01 Hz; and the envelope includes a sustain of up to 3 seconds and a decay of 1 second.
+
+% \begin{itemize}
+%     \item 4,096 samples.
+%     \item 4 seconds in duration.
+%     \item Monophonic samples (1-channel audio).
+%     \item 16 kHz audio sample rate.
+%     \item 11 instrument families.
+%     \item Pitches ranging from 27.5 Hz to 4,186.01 Hz.
+%     \item The envelope includes a sustain of up to 3 seconds and a decay of 1 second.
+% \end{itemize}
+
+The basic idea is to use the NSynth test samples as input to the model and, after predicting the synthesizer parameters, employ the implemented synthesizer to re-synthesize all samples. Finally, audio comparison metrics are calculated between each input and its corresponding generated sound, based on the proposed evaluation measures:
+
+\begin{itemize}
+    \item FFT distance: Used to compare the frequency components present in an audio signal.
+    \item STFT distance: Used to compare the variation of frequency components over time.
+    \item Log-mel-spectrogram distance: Used for a similar purpose as FFT distance, but typically models human cognitive pitch perception more accurately.
+\end{itemize}
+
+However, before using the predicted parameters as input to the synthesizer, a simple function was applied to approximate each ratio parameter to the nearest discrete ratio, according to the common behavior of musical harmonics (the same set of ratios used to randomize 90\% of the generated dataset). Furthermore, some clipping operations were also applied to enforce the same limits imposed on the randomly generated dataset, such as maximum and minimum values for beta parameters.
+
+To achieve a good evaluation, the proposed metrics were also used to compare each NSynth audio with a baseline consisting of a pure sinusoidal signal at 440 Hz (i.e., the A4 note, used as a reference to tune the majority of instruments).
+
+\section{Experimental Results and Discussion}  \label{sec:experiments}
+
+This section presents the final results of the model, including both training and audio comparison metrics. The former is used to evaluate the model’s ability to learn the entire parameter space, while the latter assesses its generalization capabilities, particularly its ability to emulate real instruments.
+
+\subsection{Training Results}
+
+The training and validation results are shown in Table~\ref{tab:train_val_metrics_2}, which summarizes the last five epochs of training.
+
+\begin{table}[htb] \small
+  \caption{Training and Validation Metrics by Epoch}
+  \label{tab:train_val_metrics_2}
+  \begin{tabular*}{\columnwidth}
+    {@{\extracolsep{\fill}}c|ccc|ccc}
+    \toprule
+    \multirow{2}{*}{Epoch} & \multicolumn{3}{c|}{Train} & \multicolumn{3}{c}{Validation} \\
+     & Loss & MAE & MSE & Loss & MAE & MSE \\
+    \midrule
+    70 & 0.603 & 0.527 & 0.545 & 0.622 & 0.517 & 0.562 \\
+    71 & 0.601 & 0.526 & 0.542 & 0.637 & 0.520 & 0.569 \\
+    72 & 0.605 & 0.526 & 0.545 & 0.621 & 0.516 & 0.565 \\
+    73 & 0.602 & 0.524 & 0.541 & 0.625 & 0.522 & 0.568 \\
+    74 & 0.611 & 0.528 & 0.548 & 0.625 & 0.520 & 0.563 \\
+    \bottomrule
+  \end{tabular*}
+\end{table}
+
+Figure~\ref{fig:mae_mse_evolution} shows the evolution of MAE and MSE during training.
+
+\begin{figure}[h]
+ \centering
+ \includegraphics[width=\linewidth]{figs/mae_mse_evolution.png}
+ \caption{Evolution of MAE and MSE during training.}
+ \label{fig:mae_mse_evolution}
+\end{figure}
+
+The model exhibits stable convergence, with no evidence of overfitting.
+
+
+% \begin{figure}[h]
+%  \centering
+%  \includegraphics[width=\linewidth]{figs/mse_evolution.png}
+%  \caption{Evolution of MSE during training.}
+%  \Description{Evolution of MSE during training.}
+% \end{figure}
+
+% \begin{figure}[h]
+%  \centering
+%  \includegraphics[width=\linewidth]{figs/mae_evolution.png}
+%  \caption{Evolution of MAE during training.}
+%  \Description{Evolution of MAE during training.}
+% \end{figure}
+
+After training, a held-out split of the synthetic dataset was used to compute test results. The predicted values were transformed back to the original space, and the results indicate:
+
+\begin{itemize}
+    \item \textbf{Mean Absolute Error (MAE):} 6.488
+    \item \textbf{Mean Squared Error (MSE):} 1410.097
+    \item \textbf{Root Mean Squared Error (RMSE):} 37.551
+\end{itemize}
+
+These values demonstrate the model’s ability to reproduce the synthetic parameters.
+
+\subsection{Audio Comparison Results}
+
+%Then, the results can be seen in the following:
+
+%Comparison of Resynthesis and Baseline in terms of three different metrics. 
+
+%\begin{table} \small % desvios nas linhas debaixo
+  %\caption{Comparision between Resynthesis and Baseline in terms of three metrics. The values represent average and standard deviation (between parentheses). Improvement shows positive gains of Resynthesis over Baseline.}
+
+%    \caption{Average and standard deviation (between parentheses) values for Resynthesis and Baseline.}%, with Improvement \%).}
+%   \label{tab:metrics}
+% \begin{tabular*}{\columnwidth}
+% 	{@{\extracolsep{\fill}}lccc}
+%     \toprule
+%     Metric & Resynthesis & Baseline & Improvement (\%) \\
+%     \midrule
+%     \multirow{2}{*}{STFT}  & 2366.4 & 7290.4  & \multirow{2}{*}{67.540}  \\
+%       &  (1132.2) & (434.87)  & \\
+%     %Log Mel (raw)
+%     \multirow{2}{*}{Log Mel (raw)} & 138.73  & 184.87 & \multirow{2}{*}{24.960} \\
+%        &  (47.013) & (30.136) & \\
+%     %Log Mel (normalized)
+%     \multirow{2}{*}{Log Mel (normalized)} & 0.0086 & 0.0115 & \multirow{2}{*}{24.930} \\
+%     &  (0.0029)  & (0.0019) & \\
+%     \bottomrule
+%   \end{tabular*}
+% \end{table}
+
+As presented in Section~\ref{sec:evaluation_method}, after training, the model’s generalization capabilities were tested through a process of re-synthesizing the NSynth dataset. The performance was evaluated by comparing the audio distance metrics between the original samples and the baseline samples with those between the re-synthesized samples and the original ones. Table~\ref{tab:metrics} summarizes the results, where the improvement is computed as ((\text{baseline} - \text{resynthesis}) / \text{baseline}), yielding the percentage gain.
+
+\begin{table}[htb] \small % desvios nas colunas
+  \caption{Comparison between Resynthesis and Baseline with Improvement \% (mean with standard deviation in parentheses).}
+  \label{tab:metrics}
+\begin{tabular*}{\columnwidth}
+	{@{\extracolsep{\fill}}lcccc}
+        \toprule
+        & \multirow{2}{*}{FFT} & \multirow{2}{*}{STFT} & Log Mel & Log Mel \\ 
+        & & & (raw) & (normalized) \\
+        
+        \midrule
+        \multirow{2}{*}{Resynthesis} & 12649.9 & 2366.4 & 138.73 & 0.0086 \\
+        & (6208.1) & (1132.2) & (47.013) & (0.0029) \\ 
+        \multirow{2}{*}{Baseline} & 33508.8 & 7290.4 & 184.87 & 0.0115 \\
+        & (1887.36) & (434.87) & (30.136) & (0.0019) \\
+        \midrule
+        Improv (\%) & 62.250 & 67.540 & 24.960 & 24.930 \\
+        \bottomrule
+    \end{tabular*}
+\end{table}
+
+
+% \begin{table} \small % desvios nas colunas
+%   \caption{Comparison between Resynthesis and Baseline with Improvement \% (considering mean and standard deviation).}
+%   \label{tab:metrics}
+% \begin{tabular*}{\columnwidth}
+% 	{@{\extracolsep{\fill}}lccccccc}
+%     \toprule
+%     \multirow{2}{*}{Metric} & \multicolumn{2}{c}{Resynthesis} & \multicolumn{2}{c}{Baseline} & \multirow{2}{*}{Tuning (\%)} \\
+%     &   AVG &  & AVG &  \\
+%     \midrule
+%     FFT  & 12649.9 & 6208.1 & 33508.8 & 1887.36  & 62.270 \\
+%     STFT  & 2366.4 & 1132.2  & 7290.4 & 434.87  & 67.540 \\
+%     %Log Mel (raw)
+%     Log Mel (r) & 138.73 & 47.013 & 184.87 & 30.136 & 24.960 \\
+%     %Log Mel (normalized)
+%     Log Mel (n) & 0.0086 & 0.0029  & 0.0115 & 0.0019 & 24.930 \\
+%     \bottomrule
+%   \end{tabular*}
+%   \label{tab:metrics}
+% \end{table}
+
+
+% \begin{table} \small % desvios nas colunas
+%   \caption{Comparison between Resynthesis and Baseline with Improvement \% (considering mean and standard deviation).}
+%   \label{tab:metrics}
+% \begin{tabular*}{\columnwidth}
+% 	{@{\extracolsep{\fill}}lccccc}
+%     \toprule
+%     Metric & Resynthesis & STD & Baseline & STD & Tuning (\%) \\
+%     \midrule
+%     FFT  & 12649.9 & 6208.1 & 33508.8 & 1887.36  & 62.270 \\
+%     STFT  & 2366.4 & 1132.2  & 7290.4 & 434.87  & 67.540 \\
+%     %Log Mel (raw)
+%     Log Mel (r) & 138.73 & 47.013 & 184.87 & 30.136 & 24.960 \\
+%     %Log Mel (normalized)
+%     Log Mel (n) & 0.0086 & 0.0029  & 0.0115 & 0.0019 & 24.930 \\
+%     \bottomrule
+%   \end{tabular*}
+%   \label{tab:metrics}
+% \end{table}
+
+% \begin{table}
+%   \caption{Comparison of Means (Resynthesis vs Baseline, with Improvement \%)}
+%   \label{tab:metrics_means_updated}
+%   \begin{tabular}{lccc}
+%     \toprule
+%     Metric & Resynthesis & Baseline & Improvement (\%) \\
+%     \midrule
+%     FFT   & 12649.920 & 33508.780 & 62.27 \\
+%     STFT  & 2366.424  & 7290.362  & 67.54 \\
+%     Log Mel (raw) & 138.732 & 184.872 & 24.96 \\
+%     Log Mel (normalized) & 0.00860 & 0.01146 & 24.93 \\
+%     \bottomrule
+%   \end{tabular}
+% \end{table}
+
+% \begin{table}
+%   \caption{Comparison of Standard Deviations (Resynthesis vs Baseline)}
+%   \label{tab:metrics_std_updated}
+%   \begin{tabular}{lcc}
+%     \toprule
+%     Metric & Resynthesis & Baseline \\
+%     \midrule
+%     FFT   & 6208.149 & 1887.364 \\
+%     STFT  & 1132.152 & 434.867  \\
+%     Log Mel (raw) & 47.013 & 30.136 \\
+%     Log Mel (normalized) & 0.00292 & 0.00187 \\
+%     \bottomrule
+%   \end{tabular}
+% \end{table}
+
+Note that the Log Mel metric was compared, including a normalized version, which is obtained by dividing the raw Log Mel value by the product of the number of Mel bands and the time window quantity.
+
+% Another important insight can be obtained from a histogram representation of the Log-Mel distances, shown in Figure~\ref{fig:histo}.
+
+% \begin{figure}[h]
+%  \centering
+%  \includegraphics[width=\linewidth]{figs/historgram_quality.png}
+%  \caption{Distribution of Normalized Log-Mel Distance.}
+%  \label{fig:histo}
+% \end{figure}
+
+Furthermore, to facilitate a better understanding, the metrics were also compared by grouping the dataset by instrument family. This allows evaluation of the model's performance across different sound classes. Table~\ref{tab:avg_metrics_groups} shows the average values.
+%and \ref{tab:stdev_metrics_groups} show the average and standard deviation values, respectively. 
+The top three best results were obtained for keyboard, guitar, and mallet families.
+
+
+
+\begin{table}[htb] \small
+  \caption{Average values by Instrument Group.}
+  \label{tab:avg_metrics_groups}
+  \begin{tabular*}{\columnwidth}
+	{@{\extracolsep{\fill}}lcccc}
+  %\begin{tabular}{lcccc}
+    \toprule
+    \multirow{2}{*}{Group} & \multirow{2}{*}{FFT} & \multirow{2}{*}{STFT} & Log Mel& Log Mel \\
+    &   &   &   (raw)  & (normalized) \\
+    \midrule
+    bass     & 11232.7 & 2144.32 & 135.610 & 0.00841 \\
+    brass    & 14371.1 & 2682.95 & 167.617 & 0.01039 \\
+    flute    & 14611.3 & 2872.69 & 141.819 & 0.00879 \\
+    guitar   & 9692.0  & 1867.47 & 119.853 & 0.00743 \\
+    keyboard & 9619.3  & 1772.92 & 119.529 & 0.00741 \\
+    mallet   & 8085.8  & 1632.45 & 120.610 & 0.00748 \\
+    organ    & 18360.1 & 3453.13 & 166.433 & 0.01032 \\
+    reed     & 12740.0 & 2267.08 & 140.701 & 0.00872 \\
+    string   & 12883.7 & 2390.65 & 139.365 & 0.00864 \\
+    vocal    & 31028.9 & 5271.26 & 212.646 & 0.01319 \\
+    \bottomrule
+  \end{tabular*}
+\end{table}
+
+% \begin{table}[htb] \small
+%   \caption{Comparison of Standard Deviations by Instrument Group}
+%   \label{tab:std_by_group_updated}
+%   \begin{tabular*}{\columnwidth}
+% 	{@{\extracolsep{\fill}}lcccc}
+%   %\begin{tabular}{lcccc}
+%     \toprule
+%     \multirow{2}{*}{Group} & \multirow{2}{*}{FFT} & \multirow{2}{*}{STFT} & Log Mel& Log Mel \\
+%     &   &   &   (raw)  & (normalized) \\
+%     \midrule
+%     bass     & 5271.64 & 931.050 & 43.094 & 0.00267 \\
+%     brass    & 3934.39 & 949.146 & 50.102 & 0.00311 \\
+%     flute    & 3711.78 & 769.482 & 36.122 & 0.00224 \\
+%     guitar   & 3805.30 & 716.923 & 38.010 & 0.00236 \\
+%     keyboard & 3024.45 & 507.672 & 34.145 & 0.00212 \\
+%     mallet   & 2304.33 & 437.872 & 38.022 & 0.00236 \\
+%     organ    & 3418.07 & 818.277 & 47.884 & 0.00297 \\
+%     reed     & 4205.59 & 905.286 & 46.032 & 0.00285 \\
+%     string   & 4696.61 & 889.743 & 35.951 & 0.00223 \\
+%     vocal    & 8218.04 & 1672.940 & 56.507 & 0.00350 \\
+%     \bottomrule
+%   \end{tabular*}
+%   \label{tab:stdev_metrics_groups}
+% \end{table}
+
+% \begin{table} \small
+%   \caption{Comparison of Standard Deviations by Instrument Group}
+%   \label{tab:std_by_group_updated}
+%   \begin{tabular}{lcccc}
+%     \toprule
+%     Group & FFT & STFT & Log Mel (raw) & Log Mel (norm) \\
+%     \midrule
+%     bass     & 5271.640 & 931.050 & 43.094 & 0.00267 \\
+%     brass    & 3934.388 & 949.146 & 50.102 & 0.00311 \\
+%     flute    & 3711.774 & 769.482 & 36.122 & 0.00224 \\
+%     guitar   & 3805.303 & 716.923 & 38.010 & 0.00236 \\
+%     keyboard & 3024.448 & 507.672 & 34.145 & 0.00212 \\
+%     mallet   & 2304.329 & 437.872 & 38.022 & 0.00236 \\
+%     organ    & 3418.068 & 818.277 & 47.884 & 0.00297 \\
+%     reed     & 4205.592 & 905.286 & 46.032 & 0.00285 \\
+%     string   & 4696.608 & 889.743 & 35.951 & 0.00223 \\
+%     vocal    & 8218.038 & 1672.940 & 56.507 & 0.00350 \\
+%     \bottomrule
+%   \end{tabular}
+% \end{table}
+
+
+% \section{Conclusion} \label{sec:conclusion}
+
+% This work aimed to develop and evaluate a technique capable of achieving two primary objectives: re-synthesizing the sounds of real musical instruments and exploring the synthesizer’s parameter space in a randomized manner to assess the model’s generalization capacity. The proposed convolutional neural network (CNN) model demonstrated strong performance in both aspects, effectively reproducing real instrument timbres and showing satisfactory generalization when exposed to unseen parameter configurations. The re-synthesized audios, when compared to the original samples from the NSynth dataset, confirmed the model’s ability to approximate realistic timbral characteristics, while maintaining consistent performance across different instrument families. The stability of the normalized log-mel metric across all categories suggests that the model is not overly biased toward specific timbral structures, reinforcing its robustness and flexibility. These results validate the initial hypothesis that CNNs are highly efficient in extracting relevant spectral and temporal features from audio signals, and that randomized dataset generation can effectively guide the learning process, enabling a level of control over FM synthesis parameters sufficient to emulate real-world sounds.
+
+% Despite these promising outcomes, the approach presents some limitations that delineate directions for future research. First, the use of a dataset restricted to musical instruments limits the generalization potential of the system; therefore, future experiments should incorporate more diverse sound sources, such as environmental or synthetic noises, to enhance creative applicability. Additionally, the adoption of a single linear ADSR envelope constrained the diversity of synthesized dynamics, indicating that broader variations should be implemented to better model non-instrumental or abstract sound categories. Another limitation concerns the exploration of FM synthesis algorithms, as only two were tested, and a single configuration yielded satisfactory results; expanding this investigation to include more complex operator topologies could significantly improve the synthesis flexibility.
+
+% Future work should thus focus on testing alternative neural architectures, such as autoencoders, to improve feature representation and generalization, as well as combining CNN-based feature extraction with other strategies found in the literature, including the use of STFT-based regression inputs or perceptually informed loss functions such as the log-mel metric. Moreover, the application of AutoML techniques could optimize the regression stage of the pipeline, potentially enhancing the model’s predictive performance. Finally, retraining the model using a professional FM synthesizer implementation would provide a more realistic framework for evaluation and deployment, advancing the state of neural sound synthesis and broadening its relevance for both academic research and creative audio production.
+
+%% utilizei o chat-gpt para reduzir a seção abaixo
+\section{Conclusion} \label{sec:conclusion}
+
+This work investigated a technique designed to achieve two main objectives: re-synthesizing real musical instrument sounds and assessing the generalization ability of a model trained on randomized synthesizer parameters. The proposed convolutional neural network (CNN) performed effectively in both tasks, reproducing instrumental timbres with high fidelity and generalizing well to unseen parameter configurations. Comparisons with NSynth samples confirmed the model’s ability to approximate realistic spectral characteristics across different instrument families. The stability of the normalized log-mel metric further indicates that the model does not overfit specific timbral structures, supporting its robustness and flexibility. Overall, the results validate the initial hypothesis that CNNs efficiently extract spectral–temporal representations from audio signals and that randomized dataset generation can successfully guide the learning of FM synthesis parameters.
+
+Despite these positive outcomes, several limitations suggest directions for further research. The dataset’s focus on musical instruments restricts broader generalization, motivating future experiments with more diverse sound sources such as environmental and synthetic noises. The exclusive use of a linear ADSR envelope also limited the diversity of dynamic profiles, indicating the need for richer envelope variations. Furthermore, only two FM synthesis algorithms were explored, and satisfactory performance was achieved with a single configuration; investigating more complex operator structures may enhance synthesis versatility.
+
+Future work should explore alternative neural architectures, such as autoencoders, and comparative studies with RNNs and TCNs to improve feature representation and generalization. Integrating CNN-based extraction with other strategies (such as STFT-based regression inputs or perceptually informed loss functions) may further enhance performance. AutoML techniques could also optimize the regression stage. A more expressive FM synthesizer implementation (potentially a professional-grade one) is also considered to provide a more realistic evaluation framework; after such an improvement, a subjective analysis with human listeners could complement the objective metrics and validate perceptual quality. This direction would further advance neural sound synthesis for both academic and creative applications.
+
+\balance
+
+\bibliographystyle{IEEEtran}
+\bibliography{bib/references, bib/sample-base, bib/software}
+
+
+\end{document}
